@@ -1,32 +1,39 @@
-class gen(nn.Module):
+import torch.nn as nn
+from init_weights import init_weights
+
+
+
+class gen_64(nn.Module):
     
     def __init__(self, 
                  latent_size = 100,
-                 complexity  = 64):
+                 complexity = 64,
+                 n_col = 3):
         
-        super(gen, self).__init__()
+        super(gen_64, self).__init__()
         self.main = nn.Sequential(
-            # input is Z, going into a convolution
-            nn.ConvTranspose2d(latent_size, complexity * 8, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(ngf * 8),
+            # BLOCK 0: 1 --> 4
+            nn.ConvTranspose2d(latent_size, complexity*8, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(complexity*8),
             nn.ReLU(True),
-            # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf * 4),
+            # BLOCK 1: 4 --> 8
+            nn.ConvTranspose2d(complexity*8, complexity*4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(complexity*4),
             nn.ReLU(True),
-            # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf * 2),
+            # BLOCK 2: 8 --> 16
+            nn.ConvTranspose2d(complexity*4, complexity*2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(complexity*2),
             nn.ReLU(True),
-            # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d(ngf * 2,     ngf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf),
+            # BLOCK 3: 16 --> 32
+            nn.ConvTranspose2d(complexity*2, complexity, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(complexity),
             nn.ReLU(True),
-            # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d(    ngf,      nc, 4, 2, 1, bias=False),
+            # BLOCK 4: 32 --> 64
+            nn.ConvTranspose2d(complexity, n_col, 4, 2, 1, bias=False),
             nn.Tanh()
-            # state size. (nc) x 64 x 64
         )
+        self.main.apply(init_weights)
+        self.main.cuda()
 
     def forward(self, input):
         output = self.main(input)
