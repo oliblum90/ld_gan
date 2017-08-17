@@ -47,4 +47,4 @@ class GanDis:
         errD = errD_real + errD_fake
         self.opt_dis.step()
         
-        return errD
+        return errD.cpu().data.numpy()[0]

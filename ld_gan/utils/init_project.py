@@ -25,6 +25,6 @@ def save_setup(name):
         
     import __main__ as main
     from shutil import copyfile
-        
-    copyfile(main.__file__, 
+    
+    copyfile("snippets/" + main.__file__, 
              os.path.join(name, main.__file__))

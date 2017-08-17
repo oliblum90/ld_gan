@@ -1,13 +1,12 @@
 import os
 import inspect, re
 import numpy as np
-import cv2
+# import cv2
 import scipy.misc
 from matplotlib import gridspec
 import matplotlib
 from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
-from utils.norm_img import un_norm
 
 
 
@@ -126,9 +125,7 @@ def save_g_imgs(fname,
                 imgs_per_row = 10, 
                 return_img = False, 
                 show_img = False):
-    
-    imgs = un_norm(imgs)
-    
+        
     n_rows = len(imgs) / imgs_per_row
     rows = []
     for i in range(n_rows):
@@ -603,7 +600,6 @@ def tsne_real_fake_vis(imgs_real,
         if sampler is not None:
             z_enc = sampler(z_enc)
         img_fake = gen.predict(z_enc)
-        img_fake = un_norm(img_fake)
         
         ax3.set_title("fake img")
         img_fake = np.squeeze(img_fake)
@@ -648,7 +644,6 @@ def move_in_z_space(project, gen_epoch, img1, img2, enc_epoch = None, sampler = 
     idx = 0
 
     img = gen.predict(np.array([z0]))
-    img = un_norm(img)
     img = np.squeeze(img[idx])
     pic = ax.imshow(img, cmap = 'gray')
     ax.axis('off')
@@ -659,7 +654,6 @@ def move_in_z_space(project, gen_epoch, img1, img2, enc_epoch = None, sampler = 
     def sliders_on_changed(val):
         z = z0 + (z1 - z0) * slider.val
         img = gen.predict(np.array([z]))
-        img = un_norm(img)
         img = np.squeeze(img)
         pic.set_data(img)
         # pic.set_data(X[int(slider.val),:,:,0])
@@ -668,14 +662,6 @@ def move_in_z_space(project, gen_epoch, img1, img2, enc_epoch = None, sampler = 
 
     plt.show()
     
-    
-    
-    
-#def norm(a):
-#    a[a<0] = 0
-#    a = a * 255.
-#    a = a.astype(np.uint8)
-#    return a
 
 
 def img_to_img(imgs, project, gen_epoch, enc_epoch = None):
@@ -696,9 +682,7 @@ def img_to_img(imgs, project, gen_epoch, enc_epoch = None):
         enc.load_weights("projects/" + project + "/model/enc_w_0.h5")
         
     fake_imgs = gen.predict(enc.predict(imgs))
-    
-    fake_imgs = un_norm(fake_imgs)
-        
+            
     return fake_imgs
     
     

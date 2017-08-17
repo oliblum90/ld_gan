@@ -1,3 +1,9 @@
+import os
+os.chdir("../")
+
+import torch.backends.cudnn as cudnn
+import torch
+
 import ld_gan
 
 

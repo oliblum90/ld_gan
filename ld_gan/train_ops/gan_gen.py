@@ -39,4 +39,4 @@ class GanGen:
         D_G_z2 = d.data.mean()
         self.opt_gen.step()
         
-        return errG
+        return errG.cpu().data.numpy()[0]
