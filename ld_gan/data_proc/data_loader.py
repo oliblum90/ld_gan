@@ -11,6 +11,71 @@ PATH_MNIST   = "/export/home/oblum/projects/ls_gan/data/mnist/jpg_32"
 PATH_FLOWER  = "/export/home/oblum/projects/ls_gan/data/flowers_102/jpg_128"
 PATH_CELEBA  = "/export/home/oblum/projects/ls_gan/data/celebA/jpg_128"
 
+
+
+
+def load_data_mp(path, 
+                 split_test_train_ratio = None, 
+                 random_state=42, 
+                 n_jobs = 10,
+                 resize = None):
+    
+    if path == 0:
+        path = PATH_MNIST
+    elif path == 1:
+        path = PATH_FLOWER
+    elif path == 2:
+        path = PATH_CELEBA
+    
+    print "load data from '{}'".format(path)
+    
+    class_dirs = [os.path.join(path, c) for c in os.listdir(path)]
+    n_classes = len(class_dirs)
+    
+    # load single class
+    if n_classes == 1:
+        
+        fnames = [os.path.join(class_dirs[0], f) for f in os.listdir(class_dirs[0])]
+        y = len(os.listdir(class_dirs[0])) * [0]
+        X = _imap_unordered_bar(scipy.misc.imread, fnames, n_jobs)
+        
+        X = np.array(X)
+        y = np.array(y)
+
+    else:
+            
+        X = _imap_bar(load_imgs, class_dirs, n_jobs)
+        y = [len(os.listdir(class_dirs[c]))*[c] for c in range(len(class_dirs))]
+        X = np.concatenate(X)
+        y = np.concatenate(y)
+    
+    X, y = shuffle(X, y, random_state = random_state)
+    
+    y = np.eye(n_classes)[y]
+    
+    if split_test_train_ratio is None:
+        return X, y
+    else:
+        X, Xt, y, yt = train_test_split(X, y, 
+                                        test_size = split_test_train_ratio,
+                                        random_state = random_state)
+        return X, y, Xt, yt
+    
+
+
+def load_imgs(path):
+    fnames = [os.path.join(path, n) for n in os.listdir(path)]
+    return [scipy.misc.imread(n) for n in fnames]
+
+
+
+
+
+
+
+
+
+
 def load_data(path, 
               split_test_train_ratio = None, 
               random_state=42, 
@@ -74,7 +139,22 @@ def load_data(path,
     
 
     
-    
+def _imap_bar(func, args, n_processes = 10):
+    #try:
+    p = Pool(n_processes)
+    res_list = []
+    with tqdm(total = len(args)) as pbar:
+        for i, res in tqdm(enumerate(p.imap(func, args))):
+            pbar.update()
+            res_list.append(res)
+    pbar.close()
+    p.close()
+    p.join()
+    return res_list
+    #except:
+    #    p.close()
+    #    p.join()
+    #    print "error!!" 
     
 def _imap_unordered_bar(func, args, n_processes = 10):
     try:

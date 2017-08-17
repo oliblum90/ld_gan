@@ -3,21 +3,23 @@ os.chdir("../")
 
 import torch.backends.cudnn as cudnn
 import torch
-
+import random
 import ld_gan
+
+RAND_SEED = 42
+cudnn.benchmark = True
+random.seed(RAND_SEED)
+torch.manual_seed(RAND_SEED)
+torch.cuda.manual_seed_all(RAND_SEED)
 
 
 BATCH_SIZE  = 128
 LATENT_SIZE = 100
 LEARNING_RATE = 0.0002
-RAND_SEED = 42
 
 
 X, Y = ld_gan.data_proc.data_loader.load_data(1, verbose=1, resize = 64)
 
-
-cudnn.benchmark = True
-torch.cuda.manual_seed_all(RAND_SEED)
 
 
 gen = ld_gan.models.gen.gen_64()
