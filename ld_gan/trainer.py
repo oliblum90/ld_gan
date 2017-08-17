@@ -48,8 +48,6 @@ class Trainer:
         self.n_samples        = n_samples
         self.n_epochs         = n_epochs
         self.iters_per_epoch  = n_samples / batch_size
-        np.savetxt(os.path.join(self._path_log, "iters_per_epoch"), 
-                   np.array([self.iters_per_epoch]))
         
         self.epoch_losses = []
         
@@ -63,6 +61,8 @@ class Trainer:
         
         # init log
         self._init_log()
+        np.savetxt(os.path.join(self._path_log, "iters_per_epoch"), 
+                   np.array([self.iters_per_epoch]))
         
         # save models
         torch.save(self.gen, os.path.join(self._path_model, "gen.pth"))

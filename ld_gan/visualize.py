@@ -271,7 +271,6 @@ def learning_curve(project,
 def learning_curve_ia(project,
                       path            = "projects",
                       smooth          = 100,
-                      disp_losses     = [1,1,1,1,1],
                       iters_per_epoch = 136.,
                       max_epoch       = None,
                       gen_img_epoch   = -1,
@@ -279,9 +278,6 @@ def learning_curve_ia(project,
                       ymax            = None,
                       show_hist_tsne  = False,
                       high_res        = False):
-    
-    colors = ['g', 'b', 'r', 'gold', 'k', 'magenta']
-    labels = ['gan-disc', 'gan-gen', 'feature-gen', 'auto-enc', 'clf', 'kl']
     
     import matplotlib.pylab as plt
     matplotlib.rcParams.update({'font.size': 8})
@@ -293,7 +289,9 @@ def learning_curve_ia(project,
         print "no iters_per_epoch file"
     
     fname = os.path.join(path, project, 'log/logs.txt')
-    logs = np.loadtxt(fname)
+    logs = np.loadtxt(fname, skiprows=1, delimiter=" ")
+    labels = np.genfromtxt('projects/x_test.py/log/logs.txt',dtype='str')[0]
+    colors = ['g', 'b', 'r', 'gold', 'k', 'magenta'][:len(labels)]
 
     x = np.arange(logs.shape[0]) / iters_per_epoch
     xc = np.arange(smooth/2, logs.shape[0] - smooth/2 + 1) / iters_per_epoch
@@ -327,14 +325,13 @@ def learning_curve_ia(project,
 
     ymax_temp = 0
     
-    for idx, show in enumerate(disp_losses):
-        if show:
-            ax1.plot(x, logs[:,idx], c=colors[idx], alpha = 0.2)
-            y = np.convolve(logs[:,idx], 
-                            np.ones((smooth,))/smooth, 
-                            mode='valid')
-            l1 = ax1.plot(xc, y, c=colors[idx], label=labels[idx])
-            ymax_temp = max(ymax_temp, y.max())
+    for idx in range(logs.shape[1]):
+        ax1.plot(x, logs[:,idx], c=colors[idx], alpha = 0.2)
+        y = np.convolve(logs[:,idx], 
+                        np.ones((smooth,))/smooth, 
+                        mode='valid')
+        l1 = ax1.plot(xc, y, c=colors[idx], label=labels[idx])
+        ymax_temp = max(ymax_temp, y.max())
 
     # adjust the plot range
     if ymax is None:
