@@ -31,8 +31,10 @@ def tensor_to_np(t):
         arr = (t.data).cpu().numpy()
     except:
         arr = (Variable(t).data).cpu().numpy()
-            
-    arr = un_norm(arr)
+    
+    if arr.shape[-1] != 1:
+        arr = un_norm(arr)
+        
     arr = arr.transpose(0, 2, 3, 1)
     arr = np.squeeze(arr)
         

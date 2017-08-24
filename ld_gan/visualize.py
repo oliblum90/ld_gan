@@ -7,6 +7,8 @@ from matplotlib import gridspec
 import matplotlib
 from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
+from data_proc.transformer import np_to_tensor, tensor_to_np
+import ld_gan
 
 
 
@@ -544,13 +546,11 @@ def tsne_real_fake_vis(imgs_real,
     
     # load models
     epoch_str = str(gen_epoch).zfill(4)
-    gen = load_model("projects/" + project + "/model/gen.h5")
-    gen.load_weights("projects/" + project + "/model/g_" + epoch_str + ".h5")
-    enc = load_model("projects/" + project + "/model/enc.h5", custom_objects={"tf": tf})
+    gen = torch.load("projects/" + project + "/model/g_" + epoch_str + ".pth")
     try:
-        enc.load_weights("projects/" + project + "/model/enc_w_0.h5")
+        enc = torch.load("projects/" + project + "/model/e_" + epoch_str + ".pth")
     except:
-        enc.load_weights("projects/" + project + "/model/e_" + epoch_str + ".h5")
+        enc = torch.load("projects/" + project + "/model/enc.pth")
     
     if z_mapped is None:
         
@@ -562,7 +562,7 @@ def tsne_real_fake_vis(imgs_real,
         
         except:
             print "compute tsne..."
-            f_X = enc.predict(imgs_real[:n_pts_tsne])
+            f_X = enc(imgs_real[:n_pts_tsne])
             tsne = TSNE(n_components=2, 
                         random_state=0, 
                         metric = 'cosine', 
@@ -602,7 +602,7 @@ def tsne_real_fake_vis(imgs_real,
         
         z_encs = []
         for idx in idxs[0]:
-            z_enc = enc.predict(np.array([imgs_real[idx]]))
+            z_enc = enc(np.array([imgs_real[idx]]))
             z_encs.append(z_enc)
         z_enc = np.mean(np.array(z_encs), axis = 0)
         
@@ -611,7 +611,7 @@ def tsne_real_fake_vis(imgs_real,
         
         if sampler is not None:
             z_enc = sampler(z_enc)
-        img_fake = gen.predict(z_enc)
+        img_fake = gen(z_enc)
         
         ax3.set_title("fake img")
         img_fake = np.squeeze(img_fake)
