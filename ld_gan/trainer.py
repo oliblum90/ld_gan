@@ -49,7 +49,7 @@ class Trainer:
         self.n_epochs         = n_epochs
         self.iters_per_epoch  = n_samples / batch_size
         
-        self.epoch_losses = []
+        self.epoch_losses     = []
         
         # init project
         init_project(project_name, ask_before_del = ask_before_del)
@@ -109,7 +109,12 @@ class Trainer:
         print "generate test imgs..."
         
         Z, _, X, _ = self.sampler.next()
-        Z = np_to_tensor(Z)
+        
+        if self.trainable_enc:
+            Z = self.enc(np_to_tensor(X))
+        else:
+            Z = np_to_tensor(Z)
+            
         x = self.gen(Z)
         x = tensor_to_np(x)
         
@@ -140,8 +145,10 @@ class Trainer:
         
         
     def train(self):
+        
+        print "\nstart training..."
                 
-        for epoch in range(self.n_epochs):
+        for epoch in range(self.n_epochs + 1):
             
             e_str = str(epoch).zfill(4)
                         

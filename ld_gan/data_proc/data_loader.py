@@ -10,6 +10,7 @@ from multiprocessing import Pool
 PATH_MNIST   = "/export/home/oblum/projects/ls_gan/data/mnist/jpg_32"
 PATH_FLOWER  = "/export/home/oblum/projects/ls_gan/data/flowers_102/jpg_128"
 PATH_CELEBA  = "/export/home/oblum/projects/ls_gan/data/celebA/jpg_128"
+PATH_FLOWER_17 = "/export/home/oblum/projects/ls_gan/data/flowers_17/jpg_64"
 
 
 
@@ -20,6 +21,8 @@ def load_data_mp(path,
                  n_jobs = 10,
                  resize = None):
     
+    if path == -1:
+        path = PATH_FLOWER_17
     if path == 0:
         path = PATH_MNIST
     elif path == 1:
@@ -83,6 +86,8 @@ def load_data(path,
               n_jobs = 1,
               resize = None):
     
+    if path == -1:
+        path = PATH_FLOWER_17
     if path == 0:
         path = PATH_MNIST
     elif path == 1:

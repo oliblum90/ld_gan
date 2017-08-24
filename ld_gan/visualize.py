@@ -325,6 +325,9 @@ def learning_curve_ia(project,
 
     ymax_temp = 0
     
+    if logs.ndim == 1:
+        logs = np.expand_dims(logs, axis = 1)
+        
     for idx in range(logs.shape[1]):
         ax1.plot(x, logs[:,idx], c=colors[idx], alpha = 0.2)
         y = np.convolve(logs[:,idx], 

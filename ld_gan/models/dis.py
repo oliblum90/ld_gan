@@ -6,7 +6,6 @@ from init_weights import init_weights
 class dis_64(nn.Module):
     
     def __init__(self, 
-                 latent_size = 100,
                  complexity = 64,
                  n_col = 3):
         
