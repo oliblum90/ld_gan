@@ -22,6 +22,7 @@ class Trainer:
                  batch_size        = 128,
                  ask_before_del    = False,
                  gen_img_step      = 5,
+                 gen_tsne_step     = 25,
                  save_model_step   = 50,
                  trainable_enc     = False):
         
@@ -44,6 +45,7 @@ class Trainer:
         self.trainable_enc    = trainable_enc
         
         self._gen_img_step    = gen_img_step
+        self._gen_tsne_step   = gen_tsne_step
         self._save_model_step = save_model_step
         self.n_samples        = n_samples
         self.n_epochs         = n_epochs
@@ -195,6 +197,9 @@ class Trainer:
             # save generated imgs
             if epoch % self._gen_img_step == 0: 
                 self.generate_imgs(fname = e_str)
+            
+            # save tsne and hist
+            if epoch % self._gen_tsne_step == 0:
                 self.save_tsne_hist(fname = e_str)
 
             # save model

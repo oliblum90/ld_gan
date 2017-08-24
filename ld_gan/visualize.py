@@ -273,7 +273,6 @@ def learning_curve_ia(project,
                       smooth          = 100,
                       iters_per_epoch = 136.,
                       max_epoch       = None,
-                      gen_img_epoch   = -1,
                       xmax            = None,
                       ymax            = None,
                       show_hist_tsne  = False,
@@ -349,8 +348,9 @@ def learning_curve_ia(project,
 
     
     path_img = os.path.join(path, project, 'generated_img')
-    if gen_img_epoch == -1:
-        gen_img_epoch = int(os.listdir(path_img)[-1][:4])
+    path_ht = os.path.join(path, project, 'hist_tsne')
+    gen_img_epoch = int(os.listdir(path_img)[-1][:4])
+    gen_tsne_epoch = int(os.listdir(path_ht)[-1][:4])
     
     # show fake image    
     fname = str(gen_img_epoch).zfill(4) + "_fake.png"
@@ -377,17 +377,18 @@ def learning_curve_ia(project,
     ax3.set_title("real imgs")
     ax3.axis('off')
         
-    path_ht = os.path.join(path, project, 'hist_tsne')
     if show_hist_tsne:
         try:
             fname = os.path.join(path_ht, '0_hist_tsne.png')
             img = scipy.misc.imread(fname)
             ax4.imshow(img)
+            ax4.set_title("hist / tsne")
         except:
-            fname = str(gen_img_epoch).zfill(4) + "_hist_tsne.png"
+            fname = str(gen_tsne_epoch).zfill(4) + "_hist_tsne.png"
             fname = os.path.join(path_ht, fname)
             img = scipy.misc.imread(fname)
             ax4.imshow(img)
+            ax4.set_title("hist / tsne (epoch {})".format(gen_tsne_epoch))
     
     def onclick(event):
         
@@ -395,6 +396,11 @@ def learning_curve_ia(project,
         iters = [int(img_str[:4]) for img_str in imgs]
         idx = np.argmin(np.abs(np.array(iters) - event.xdata))
         gen_img_epoch = iters[idx]
+        
+        imgs = os.listdir(path_ht)
+        iters = [int(img_str[:4]) for img_str in imgs]
+        idx = np.argmin(np.abs(np.array(iters) - event.xdata))
+        gen_tsne_epoch = iters[idx]
         
         fname = str(gen_img_epoch).zfill(4) + "_fake.png"
         fname = os.path.join(path_img, fname)
@@ -412,11 +418,13 @@ def learning_curve_ia(project,
                 fname = os.path.join(path_ht, '0_hist_tsne.png')
                 img = scipy.misc.imread(fname)
                 ax4.imshow(img)
+                ax4.set_title("hist / tsne")
             except:
-                fname = str(gen_img_epoch).zfill(4) + "_hist_tsne.png"
+                fname = str(gen_tsne_epoch).zfill(4) + "_hist_tsne.png"
                 fname = os.path.join(path_ht, fname)
                 img = scipy.misc.imread(fname)
                 ax4.imshow(img)
+                ax4.set_title("hist / tsne (epoch {})".format(gen_tsne_epoch))
 
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
@@ -447,7 +455,7 @@ def plot_hist_and_tsne(f_X,
     ax2.set_title("t-SNE")
     tsne = TSNE(n_components=2, 
                 random_state=0, 
-                # metric = 'cosine', 
+                metric = 'cosine', 
                 learning_rate=1000)
     X_tsne = tsne.fit_transform(f_X[:n_pts_tsne])
     if y is None:
@@ -555,7 +563,9 @@ def tsne_real_fake_vis(imgs_real,
         except:
             print "compute tsne..."
             f_X = enc.predict(imgs_real[:n_pts_tsne])
-            tsne = TSNE(n_components=2, random_state=0, metric = 'cosine', 
+            tsne = TSNE(n_components=2, 
+                        random_state=0, 
+                        metric = 'cosine', 
                         learning_rate=1000)
             z_mapped = tsne.fit_transform(f_X)
             try:
