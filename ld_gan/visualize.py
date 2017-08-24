@@ -445,8 +445,10 @@ def plot_hist_and_tsne(f_X,
     
     # tsne
     ax2.set_title("t-SNE")
-    tsne = TSNE(n_components=2, random_state=0, metric = 'cosine', 
-            learning_rate=1000)
+    tsne = TSNE(n_components=2, 
+                random_state=0, 
+                # metric = 'cosine', 
+                learning_rate=1000)
     X_tsne = tsne.fit_transform(f_X[:n_pts_tsne])
     if y is None:
         ax2.scatter(X_tsne[:,0], X_tsne[:,1])

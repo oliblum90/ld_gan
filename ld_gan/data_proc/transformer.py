@@ -34,6 +34,7 @@ def tensor_to_np(t):
             
     arr = un_norm(arr)
     arr = arr.transpose(0, 2, 3, 1)
+    arr = np.squeeze(arr)
         
     return arr
         

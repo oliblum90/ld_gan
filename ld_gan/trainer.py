@@ -47,6 +47,7 @@ class Trainer:
         self._save_model_step = save_model_step
         self.n_samples        = n_samples
         self.n_epochs         = n_epochs
+        self.batch_size       = batch_size
         self.iters_per_epoch  = n_samples / batch_size
         
         self.epoch_losses     = []
@@ -63,6 +64,10 @@ class Trainer:
         self._init_log()
         np.savetxt(os.path.join(self._path_log, "iters_per_epoch"), 
                    np.array([self.iters_per_epoch]))
+        
+        # save hist / t-sne
+        if trainable_enc == False:
+            self.save_tsne_hist(fname = "0")
         
         # save models
         torch.save(self.gen, os.path.join(self._path_model, "gen.pth"))
@@ -131,6 +136,30 @@ class Trainer:
             return x, X
         
         
+    def save_tsne_hist(self, fname, n_f_vecs = 1000, n_tsne_imgs = 30):
+        
+        print "generate z-histogram and tsne visualization..."
+        
+        n_iters = n_f_vecs / self.batch_size + 1
+        f_vecs, imgs = [], []
+        for step in range(n_iters):
+            Z, _, X, _ = self.sampler.next()
+            f_vecs.append(Z)
+            imgs.append(X)
+        X = np.concatenate(imgs)[:n_f_vecs]
+        Z = np.concatenate(f_vecs)[:n_f_vecs]
+
+        if self.trainable_enc:
+            Z = tensor_to_np(self.enc(np_to_tensor(X)))
+            
+        fname = os.path.join(self._path_hist_tsne, fname + "_hist_tsne.png")
+        visualize.plot_hist_and_tsne(Z, 
+                                     imgs = X, 
+                                     fname = fname,
+                                     n_clusters = n_tsne_imgs,
+                                     n_pts_tsne = n_f_vecs)
+        
+        
     def _show_training_status(self, epoch):
         
         losses = np.mean(np.array(self.epoch_losses), axis = 0)
@@ -166,6 +195,7 @@ class Trainer:
             # save generated imgs
             if epoch % self._gen_img_step == 0: 
                 self.generate_imgs(fname = e_str)
+                self.save_tsne_hist(fname = e_str)
 
             # save model
             if epoch % self._save_model_step == 0:
