@@ -1,7 +1,7 @@
 from ld_gan.data_proc.transformer import np_to_tensor, tensor_to_np
 import torch
 
-def load_model(project, epoch, model_name):
+def load_model(project, epoch, model_name, test_mode = True):
         
     epoch_str = str(epoch).zfill(4)
     try:
@@ -10,6 +10,9 @@ def load_model(project, epoch, model_name):
     except:
         fname = "projects/" + project + "/model/" + model_name + ".pth"
         model = torch.load(fname)
+        
+    if test_mode:
+        model.eval()
         
     print "loaded model '{}'".format(fname)
         

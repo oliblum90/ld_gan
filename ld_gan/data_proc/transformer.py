@@ -10,12 +10,15 @@ def np_to_tensor(*args):
     
     for arr in args:
         
-        if arr.ndim == 4:
+        if arr.ndim == 4 and arr.shape[-1] != 1:
             arr = arr.transpose(0, 3, 1, 2)
             arr = norm(arr)
             
         if arr.ndim == 2:
             arr = arr.reshape((arr.shape[0], arr.shape[1], 1, 1))
+            
+        if arr.ndim == 1:
+            arr = arr.reshape((1, arr.shape[0], 1, 1))
             
         t = Variable(torch.from_numpy(arr).cuda()).float()
         

@@ -533,7 +533,7 @@ def gen_real_compare(weights_gen,
 def tsne_real_fake_vis(imgs_real, 
                        y, 
                        project, 
-                       gen_epoch,
+                       epoch,
                        z_mapped = None, 
                        sampler = None,
                        n_pts_tsne = 4000,
@@ -541,19 +541,13 @@ def tsne_real_fake_vis(imgs_real,
                        alpha = 0.003):
     
     import matplotlib.pylab as plt
-    from keras.models import load_model
-    import tensorflow as tf
     
     # load models
-    epoch_str = str(gen_epoch).zfill(4)
-    gen = torch.load("projects/" + project + "/model/g_" + epoch_str + ".pth")
-    try:
-        enc = torch.load("projects/" + project + "/model/e_" + epoch_str + ".pth")
-    except:
-        enc = torch.load("projects/" + project + "/model/enc.pth")
+    enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+    gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
     
     if z_mapped is None:
-        
+        epoch_str = str(epoch).zfill(4)
         fname = "projects/" + project + "/tsne_pts/" \
                           + epoch_str + "_" + str(n_pts_tsne) + ".npy"
         
@@ -562,7 +556,7 @@ def tsne_real_fake_vis(imgs_real,
         
         except:
             print "compute tsne..."
-            f_X = enc(imgs_real[:n_pts_tsne])
+            f_X = ld_gan.utils.model_handler.apply_model(enc, imgs_real[:n_pts_tsne])
             tsne = TSNE(n_components=2, 
                         random_state=0, 
                         metric = 'cosine', 
@@ -589,9 +583,9 @@ def tsne_real_fake_vis(imgs_real,
 
     ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = y[:len(z_mapped)], 
                 s = 10, alpha = alpha, edgecolors='none')
-
+    
     def onclick(event):
-        dists, idxs = nbrs.kneighbors(np.array([event.xdata, event.ydata]))
+        dists, idxs = nbrs.kneighbors(np.array([[event.xdata, event.ydata]]))
         idx = idxs[0][0]
         print('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
               (event.button, idx, event.y, event.xdata, event.ydata))
@@ -602,7 +596,7 @@ def tsne_real_fake_vis(imgs_real,
         
         z_encs = []
         for idx in idxs[0]:
-            z_enc = enc(np.array([imgs_real[idx]]))
+            z_enc = ld_gan.utils.model_handler.apply_model(enc, np.array([imgs_real[idx]]))
             z_encs.append(z_enc)
         z_enc = np.mean(np.array(z_encs), axis = 0)
         
@@ -611,7 +605,8 @@ def tsne_real_fake_vis(imgs_real,
         
         if sampler is not None:
             z_enc = sampler(z_enc)
-        img_fake = gen(z_enc)
+            
+        img_fake = ld_gan.utils.model_handler.apply_model(gen, z_enc)
         
         ax3.set_title("fake img")
         img_fake = np.squeeze(img_fake)
@@ -621,26 +616,17 @@ def tsne_real_fake_vis(imgs_real,
     
     
     
-def move_in_z_space(project, gen_epoch, img1, img2, enc_epoch = None, sampler = None):
+def move_in_z_space(project, img1, img2, epoch, sampler = None):
     
     import matplotlib.pylab as plt
-    from keras.models import load_model
-    import tensorflow as tf
     from matplotlib.widgets import Slider, Button, RadioButtons
     
     # load models
-    epoch_str = str(gen_epoch).zfill(4)
-    enc_epoch_str = str(enc_epoch).zfill(4)
-    gen = load_model("projects/" + project + "/model/gen.h5")
-    gen.load_weights("projects/" + project + "/model/g_" + epoch_str + ".h5")
-    enc = load_model("projects/" + project + "/model/enc.h5", custom_objects={"tf": tf})
-    if enc_epoch is not None:
-        enc.load_weights("projects/" + project + "/model/e_" + enc_epoch_str + ".h5")
-    else:
-        enc.load_weights("projects/" + project + "/model/enc_w_0.h5")
+    enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+    gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
     
     # compute z-start and z-end
-    z0, z1 = enc.predict(np.array([img1, img2]))
+    z0, z1 = ld_gan.utils.model_handler.apply_model(enc, np.array([img1, img2]))
     z0 = z0 if sampler is None else sampler(z0)
     z1 = z1 if sampler is None else sampler(z1)
     
@@ -655,8 +641,7 @@ def move_in_z_space(project, gen_epoch, img1, img2, enc_epoch = None, sampler = 
 
     idx = 0
 
-    img = gen.predict(np.array([z0]))
-    img = np.squeeze(img[idx])
+    img = ld_gan.utils.model_handler.apply_model(gen, np.array([z0]))
     pic = ax.imshow(img, cmap = 'gray')
     ax.axis('off')
 
@@ -665,8 +650,7 @@ def move_in_z_space(project, gen_epoch, img1, img2, enc_epoch = None, sampler = 
 
     def sliders_on_changed(val):
         z = z0 + (z1 - z0) * slider.val
-        img = gen.predict(np.array([z]))
-        img = np.squeeze(img)
+        img = ld_gan.utils.model_handler.apply_model(gen, np.array([z]))
         pic.set_data(img)
         # pic.set_data(X[int(slider.val),:,:,0])
         fig.canvas.draw_idle()

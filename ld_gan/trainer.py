@@ -66,6 +66,10 @@ class Trainer:
         self._init_log()
         np.savetxt(os.path.join(self._path_log, "iters_per_epoch"), 
                    np.array([self.iters_per_epoch]))
+        np.savetxt(os.path.join(self._path_log, "batch_size"), 
+                   np.array([self.batch_size]))
+        np.savetxt(os.path.join(self._path_log, "n_samples"), 
+                   np.array([self.n_samples]))
         
         # save hist / t-sne
         if trainable_enc == False:
