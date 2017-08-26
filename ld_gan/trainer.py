@@ -22,7 +22,7 @@ class Trainer:
                  batch_size        = 128,
                  ask_before_del    = False,
                  gen_img_step      = 5,
-                 gen_tsne_step     = 25,
+                 gen_tsne_step     = 10,
                  save_model_step   = 50,
                  trainable_enc     = False):
         
@@ -119,7 +119,7 @@ class Trainer:
         
         print "generate test imgs..."
         
-        Z, _, X, _ = self.sampler.next()
+        X, Y, Z, Z_bar = self.sampler.next()
         
         if self.trainable_enc:
             Z = self.enc(np_to_tensor(X))
@@ -149,7 +149,7 @@ class Trainer:
         n_iters = n_f_vecs / self.batch_size + 1
         f_vecs, imgs = [], []
         for step in range(n_iters):
-            Z, _, X, _ = self.sampler.next()
+            X, Y, Z, Z_bar = self.sampler.next()
             f_vecs.append(Z)
             imgs.append(X)
         X = np.concatenate(imgs)[:n_f_vecs]
@@ -189,10 +189,10 @@ class Trainer:
                         
             for iteration in tqdm(range(self.iters_per_epoch)):
                 
-                Z, _, X, _ = self.sampler.next()
-                Z, X = np_to_tensor(Z, X)
+                X, Y, Z, Z_bar = self.sampler.next()
+                X, Y, Z, Z_bar = np_to_tensor(X, Y, Z, Z_bar)
                 
-                losses = [op.train(X, Z) for op in self.train_ops]
+                losses = [op.train(X, Y, Z, Z_bar) for op in self.train_ops]
             
                 self._write_log(losses)
             
@@ -203,8 +203,9 @@ class Trainer:
                 self.generate_imgs(fname = e_str)
             
             # save tsne and hist
-            if epoch % self._gen_tsne_step == 0:
-                self.save_tsne_hist(fname = e_str)
+            if self.trainable_enc:
+                if epoch % self._gen_tsne_step == 0:
+                    self.save_tsne_hist(fname = e_str)
 
             # save model
             if epoch % self._save_model_step == 0:

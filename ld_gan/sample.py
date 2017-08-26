@@ -45,7 +45,7 @@ def generate_rand_noise(imgs, y, batch_size, latent_size):
         img_batch = imgs[batch_idxs]
         y_batch = y[batch_idxs]
         
-        yield z_batch, z_batch, img_batch, y_batch
+        yield img_batch, y_batch, z_batch, z_batch
 
 #1
 def pick_rand_sample(z_enc, imgs, y, batch_size):

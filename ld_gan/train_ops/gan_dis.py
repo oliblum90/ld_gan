@@ -24,7 +24,7 @@ class GanDis:
         self.opt_dis = optim.Adam(self.dis.parameters(), lr=lr, betas=(0.5, 0.999))
         
     
-    def train(self, X, Z):
+    def train(self, X, Y, Z, Z_bar):
 
         bs = X.size(0)
 

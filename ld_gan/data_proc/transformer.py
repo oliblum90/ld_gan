@@ -18,9 +18,9 @@ def np_to_tensor(*args):
             arr = arr.reshape((arr.shape[0], arr.shape[1], 1, 1))
             
         if arr.ndim == 1:
-            arr = arr.reshape((1, arr.shape[0], 1, 1))
-            
-        t = Variable(torch.from_numpy(arr).cuda()).float()
+            t = Variable(torch.from_numpy(arr).cuda().long())
+        else:
+            t = Variable(torch.from_numpy(arr).cuda()).float()
         
         tensors.append(t)
         
@@ -35,10 +35,10 @@ def tensor_to_np(t):
     except:
         arr = (Variable(t).data).cpu().numpy()
     
-    if arr.shape[-1] != 1:
+    if arr.ndim == 4 and arr.shape[-1] != 1:
         arr = un_norm(arr)
+        arr = arr.transpose(0, 2, 3, 1)
         
-    arr = arr.transpose(0, 2, 3, 1)
     arr = np.squeeze(arr)
         
     return arr

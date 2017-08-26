@@ -291,7 +291,8 @@ def learning_curve_ia(project,
     
     fname = os.path.join(path, project, 'log/logs.txt')
     logs = np.loadtxt(fname, skiprows=1, delimiter=" ")
-    labels = np.genfromtxt('projects/x_test.py/log/logs.txt',dtype='str')[0]
+    labels = np.genfromtxt(fname, dtype='str')
+    labels = labels[0] if labels.ndim > 1 else labels
     colors = ['g', 'b', 'r', 'gold', 'k', 'magenta'][:len(labels)]
 
     x = np.arange(logs.shape[0]) / iters_per_epoch
@@ -352,7 +353,10 @@ def learning_curve_ia(project,
     path_img = os.path.join(path, project, 'generated_img')
     path_ht = os.path.join(path, project, 'hist_tsne')
     gen_img_epoch = int(os.listdir(path_img)[-1][:4])
-    gen_tsne_epoch = int(os.listdir(path_ht)[-1][:4])
+    try:
+        gen_tsne_epoch = int(os.listdir(path_ht)[-1][:4])
+    except:
+        gen_tsne_epoch = 0
     
     # show fake image    
     fname = str(gen_img_epoch).zfill(4) + "_fake.png"
@@ -444,6 +448,8 @@ def plot_hist_and_tsne(f_X,
         import matplotlib.pylab as plt
     else:
         import matplotlib.pylab as plt
+        
+    plt.close('all')
     
     fig = plt.figure(figsize=(15, 4.5))
     ax1 = fig.add_subplot(1,2,1)

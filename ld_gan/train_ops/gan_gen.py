@@ -24,7 +24,7 @@ class GanGen:
         self.opt_gen = optim.Adam(self.gen.parameters(), lr=lr, betas=(0.5, 0.999))
         
     
-    def train(self, X, Z):
+    def train(self, X, Y, Z, Z_bar):
 
         bs = X.size(0)
 
