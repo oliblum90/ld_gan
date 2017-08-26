@@ -36,8 +36,10 @@ class Clf:
         self.enc = enc
         self.clf_layer = _ClfLayer(n_features, n_classes)
         
-        self.opt_enc = optim.Adam(self.enc.parameters(), lr=lr)
-        self.opt_clf_layer = optim.Adam(self.clf_layer.parameters(), lr=lr)
+        #self.opt_enc = optim.Adam(self.enc.parameters(), lr=lr)
+        #self.opt_clf_layer = optim.Adam(self.clf_layer.parameters(), lr=lr)
+        self.opt_enc = optim.SGD(self.enc.parameters(), lr=lr, momentum=0.9)
+        self.opt_clf_layer = optim.SGD(self.clf_layer.parameters(), lr=lr, momentum=0.9)
 
     
     def train(self, X, Y, Z, Z_bar):
