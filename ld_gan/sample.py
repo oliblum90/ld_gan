@@ -259,10 +259,34 @@ def sample_tsne_features(z_enc,
         z_out = z_enc[idxs].mean(axis = 1)
         
         yield z_in, z_out, None
+    
+    
+# 10
+def nn_sampler(z_enc, imgs, y, batch_size, n_neighbors = 5, n_jobs = 10):
+    
+    dists, idxs = NearestNeighbors(n_neighbors=n_neighbors,
+                                   n_jobs=n_jobs).fit(z_enc).kneighbors(z_enc)
+    
+    while True:
         
-
-
-
+        batch_idxs = np.random.randint(0, len(z_enc), batch_size)
+        
+        # get z_batch
+        batch_z_idxs = idxs[batch_idxs]
+        batch_z_all = z_enc[batch_z_idxs]
+        rand_weights = np.random.rand(n_neighbors, batch_size)
+        rand_weighst = rand_weights / np.sum(rand_weights, axis=0)
+        rand_weights = rand_weights.transpose()
+        z_batch = [np.average(z_all, 0, w) for w, z_all in zip(rand_weights, batch_z_all)]
+        z_batch = np.array(z_batch)
+        
+        img_batch = imgs[batch_idxs]
+        
+        y_batch = y[batch_idxs]
+        
+        yield img_batch, y_batch, z_batch, z_batch
+        
+        
 def find_ideal_kde_sampling_bandwidth(ipt, 
                                       project = None, 
                                       enc_epoch = None, 
