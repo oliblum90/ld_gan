@@ -402,18 +402,13 @@ def learning_curve_ia(project,
         iters = [int(img_str[:4]) for img_str in imgs]
         idx = np.argmin(np.abs(np.array(iters) - event.xdata))
         gen_img_epoch = iters[idx]
-        
-        imgs = os.listdir(path_ht)
-        iters = [int(img_str[:4]) for img_str in imgs]
-        idx = np.argmin(np.abs(np.array(iters) - event.xdata))
-        gen_tsne_epoch = iters[idx]
-        
+                
         fname = str(gen_img_epoch).zfill(4) + "_fake.png"
         fname = os.path.join(path_img, fname)
         img = scipy.misc.imread(fname)
         ax2.imshow(img[0:img.shape[1]], cmap='gray')
         ax2.set_title("fake imgs (epoch {})".format(gen_img_epoch))
-        
+                
         fname = str(gen_img_epoch).zfill(4) + "_real.png"
         fname = os.path.join(path_img, fname)
         img = scipy.misc.imread(fname)
@@ -431,7 +426,7 @@ def learning_curve_ia(project,
                 img = scipy.misc.imread(fname)
                 ax4.imshow(img)
                 ax4.set_title("hist / tsne (epoch {})".format(gen_tsne_epoch))
-
+                
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
     
