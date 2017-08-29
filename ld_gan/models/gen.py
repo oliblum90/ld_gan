@@ -84,10 +84,10 @@ class Gen(nn.Module):
     
     def forward(self, x):
         
-        if self.extra_fc_layer:
-            x = x.view(-1, self.latent_size)
-            x = self.fc0(x)
-            x = x.view(-1, self.latent_size, 1, 1)
+        #if self.extra_fc_layer:
+        #    x = x.view(-1, self.latent_size)
+        #    x = self.fc0(x)
+        #    x = x.view(-1, self.latent_size, 1, 1)
             
         x = self.main(x)
         

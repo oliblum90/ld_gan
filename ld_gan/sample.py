@@ -55,7 +55,7 @@ def pick_rand_sample(z_enc, imgs, y, batch_size):
         z_batch = z_enc[batch_idxs]
         img_batch = imgs[batch_idxs]
         y_batch = y[batch_idxs]
-        yield z_batch, z_batch, img_batch, y_batch
+        yield img_batch, y_batch, z_batch, z_batch
         
 #2 
 def pick_rand_sample_with_weighted_noise(z_enc, batch_size, noise_amount = 1):

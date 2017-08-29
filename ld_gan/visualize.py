@@ -539,7 +539,8 @@ def tsne_real_fake_vis(imgs_real,
                        sampler = None,
                        n_pts_tsne = 4000,
                        n_neighbors = 5,
-                       alpha = 0.003):
+                       alpha = 0.003,
+                       real_img_mode = "single"):
     
     import matplotlib.pylab as plt
     
@@ -590,25 +591,53 @@ def tsne_real_fake_vis(imgs_real,
         idx = idxs[0][0]
         print('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
               (event.button, idx, event.y, event.xdata, event.ydata))
-
-        ax2.set_title("real img")
-        img_real = np.squeeze(imgs_real[idx])
-        ax2.imshow(img_real, cmap='gray')
         
+        if real_img_mode == "all":
+            imgs = imgs_real[idxs[0]]
+            img = save_g_imgs(None, 
+                              imgs, 
+                              return_img=True,
+                              imgs_per_row=int(np.ceil(np.sqrt(3))))
+            ax2.imshow(img, cmap='gray')
+            ax2.set_title(idxs[0])
+            
+        elif real_img_mode == "mean":
+            imgs = imgs_real[idxs[0]]
+            img = np.mean(imgs, axis = 0)
+            img = img.astype(np.uint8)
+            ax2.imshow(img, cmap='gray')
+            ax2.set_title(idxs[0])
+            
+        elif real_img_mode == "all+mean":
+            imgs = imgs_real[idxs[0]]
+            imgs_small = np.concatenate(imgs, axis=1)
+            imgs_small = scipy.misc.imresize(imgs_small, (imgs[0].shape[0] / len(imgs), 
+                                                          imgs[0].shape[0]))
+            img_mean = np.mean(imgs, axis = 0)
+            img_mean = img_mean.astype(np.uint8)
+            img = np.concatenate([imgs_small, img_mean], axis=0)
+            ax2.imshow(img, cmap='gray')
+            ax2.set_title(idxs[0])
+            
+        elif real_img_mode == "single":
+            ax2.set_title("real img")
+            img_real = np.squeeze(imgs_real[idx])
+            ax2.imshow(img_real, cmap='gray')
+
         z_encs = []
         for idx in idxs[0]:
             z_enc = ld_gan.utils.model_handler.apply_model(enc, np.array([imgs_real[idx]]))
             z_encs.append(z_enc)
         z_enc = np.mean(np.array(z_encs), axis = 0)
         
-        # idx = idxs[0][0]
-        # z_enc = enc.predict(np.array([imgs_real[idx]]))
-        
         if sampler is not None:
             z_enc = sampler(z_enc)
-            
-        img_fake = ld_gan.utils.model_handler.apply_model(gen, z_enc)
         
+        if z_enc.ndim == 1:
+            z_enc = np.array([z_enc])
+        
+        img_fake = ld_gan.utils.model_handler.apply_model(gen, z_enc)
+                
         ax3.set_title("fake img")
         img_fake = np.squeeze(img_fake)
         ax3.imshow(img_fake, cmap='gray')
