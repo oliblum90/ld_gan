@@ -171,11 +171,12 @@ class Trainer:
         losses = np.mean(np.array(self.epoch_losses), axis = 0)
         self.epoch_losses = []
         names = [to.__class__.__name__ for to in self.train_ops]
+        names = [n.ljust(10) for n in names]
         
         print "EPOCH: {}".format(epoch)
         print "--------------------------------------------------------"
         for l, n in zip(losses, names):
-            print n, "\t: ", l
+            print n, ": ", l
         print "--------------------------------------------------------"
         
         
