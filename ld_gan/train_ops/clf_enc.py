@@ -49,7 +49,7 @@ class Clf:
         self.log_fname = os.path.join("projects", 
                                       main.__file__, 
                                       "log", 
-                                      "vgg_logs.txt")
+                                      "clf_acc.txt")
 
         
     def _init_log(self):
