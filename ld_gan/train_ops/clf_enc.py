@@ -4,6 +4,9 @@ from torch.autograd import Variable
 import torch.optim as optim
 import numpy as np
 from ld_gan.models import init_weights
+import ld_gan
+import __main__ as main
+import os
 
 
 class _ClfLayer(nn.Module):
@@ -28,7 +31,7 @@ class _ClfLayer(nn.Module):
     
 class Clf:
     
-    def __init__(self, enc, lr, n_features, n_classes):
+    def __init__(self, enc, lr, n_features, n_classes, write_log=True):
         
         self.criterion = nn.CrossEntropyLoss()
         self.criterion.cuda()
@@ -37,10 +40,23 @@ class Clf:
         self.clf_layer = _ClfLayer(n_features, n_classes)
         
         self.opt_enc = optim.Adam(self.enc.parameters(), lr=lr)
-        self.opt_clf_layer = optim.Adam(self.clf_layer.parameters(), lr=lr)
-        #self.opt_enc = optim.SGD(self.enc.parameters(), lr=lr, momentum=0.9)
-        #self.opt_clf_layer = optim.SGD(self.clf_layer.parameters(), lr=lr, momentum=0.9)
+        
+        #self.opt_clf_layer = optim.Adam(self.clf_layer.parameters(), lr=lr)
+        self.opt_enc = optim.SGD(self.enc.parameters(), lr=lr, momentum=0.9)
+        self.opt_clf_layer = optim.SGD(self.clf_layer.parameters(), lr=lr, momentum=0.9)
+        
+        self.write_log = write_log
+        self.log_fname = os.path.join("projects", 
+                                      main.__file__, 
+                                      "log", 
+                                      "vgg_logs.txt")
 
+        
+    def _init_log(self):
+        header = "clf_acc"
+        with open(self.log_fname, 'w') as f:
+            f.write(header)
+        
     
     def train(self, X, Y, Z, Z_bar):
         
@@ -56,6 +72,22 @@ class Clf:
         
         self.opt_enc.step()
         self.opt_clf_layer.step()
+        
+        # write log
+        if self.write_log:
+            
+            if os.path.isfile(self.log_fname) == False:
+                self._init_log()
+                
+            y = ld_gan.data_proc.transformer.tensor_to_np(y)
+            Y = ld_gan.data_proc.transformer.tensor_to_np(Y)
+            y = np.argmax(y, axis = 1)
+            acc = float((Y == y).sum()) / len(Y)
+                
+            line = str(acc)
+            with open(self.log_fname, 'a') as f:
+                f.write("\n" + line)
+        
         
         return err.cpu().data.numpy()[0]
     

@@ -20,6 +20,7 @@ import scipy
 from sklearn.neighbors.kde import KernelDensity
 from sklearn.neighbors import NearestNeighbors
 from multiprocessing import Process, Queue
+import ld_gan
 
 def precomputing_iterator(iterator, maxsize = 5):
     
@@ -285,6 +286,38 @@ def nn_sampler(z_enc, imgs, y, batch_size, n_neighbors = 5, n_jobs = 10):
         y_batch = y[batch_idxs]
         
         yield img_batch, y_batch, z_batch, z_batch
+        
+        
+        
+# 10 life
+def nn_sampler_life(enc, imgs, y, batch_size, n_neighbors = 5, n_jobs = 10):
+    
+    while True:
+        
+        z_enc = ld_gan.utils.model_handler.apply_model(enc, imgs)
+        
+        dists, idxs = NearestNeighbors(n_neighbors=n_neighbors,
+                                       n_jobs=n_jobs).fit(z_enc).kneighbors(z_enc)
+        
+        batch_idxs = np.random.randint(0, len(z_enc), batch_size)
+        
+        # get z_batch
+        batch_z_idxs = idxs[batch_idxs]
+        batch_z_all = z_enc[batch_z_idxs]
+        rand_weights = np.random.rand(n_neighbors, batch_size)
+        rand_weighst = rand_weights / np.sum(rand_weights, axis=0)
+        rand_weights = rand_weights.transpose()
+        z_batch = [np.average(z_all, 0, w) for w, z_all in zip(rand_weights, batch_z_all)]
+        z_batch = np.array(z_batch)
+        
+        img_batch = imgs[batch_idxs]
+        
+        y_batch = y[batch_idxs]
+        
+        yield img_batch, y_batch, z_batch, z_batch
+        
+        
+        
         
         
 def find_ideal_kde_sampling_bandwidth(ipt, 

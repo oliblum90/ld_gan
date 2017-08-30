@@ -38,7 +38,6 @@ class VGGAutoEnc:
 
         bs = X.size(0)
 
-        # train with real
         self.gen.zero_grad()
         self.enc.zero_grad()
         C1, C2, C3, C4, C5 = self.vgg(X)
