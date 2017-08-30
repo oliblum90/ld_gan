@@ -4,7 +4,7 @@ import torchvision
     
 class VGG(nn.Module):
     
-    def __init__(self, n_features = 5):
+    def __init__(self):
         
         super(VGG, self).__init__()
         

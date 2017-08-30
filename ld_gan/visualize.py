@@ -278,7 +278,8 @@ def learning_curve_ia(project,
                       xmax            = None,
                       ymax            = None,
                       show_hist_tsne  = False,
-                      high_res        = False):
+                      high_res        = False,
+                      logs_fname      = None):
     
     import matplotlib.pylab as plt
     matplotlib.rcParams.update({'font.size': 8})
@@ -289,7 +290,10 @@ def learning_curve_ia(project,
     except:
         print "no iters_per_epoch file"
     
-    fname = os.path.join(path, project, 'log/logs.txt')
+    if logs_fname is None:
+        fname = os.path.join(path, project, 'log/logs.txt')
+    else:
+        fname = os.path.join(path, project, 'log', logs_fname)
     logs = np.loadtxt(fname, skiprows=1, delimiter=" ")
     labels = np.genfromtxt(fname, dtype='str')
     labels = labels[0] if labels.ndim > 1 else labels
