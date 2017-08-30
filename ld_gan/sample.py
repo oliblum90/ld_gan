@@ -290,10 +290,21 @@ def nn_sampler(z_enc, imgs, y, batch_size, n_neighbors = 5, n_jobs = 10):
         
         
 # 10 life
-def nn_sampler_life(enc, imgs, y, batch_size, n_neighbors = 5, n_jobs = 10):
+def nn_sampler_life(enc, 
+                    X, 
+                    y, 
+                    batch_size, 
+                    n_neighbors = 5, 
+                    n_jobs = 10, 
+                    nn_subset_size = None):
     
     while True:
         
+        if nn_subset_size is None:
+            imgs = X
+        else:
+            rand_idxs = np.random.randint(0, len(X), nn_subset_size)
+            imgs = X[rand_idxs]
         z_enc = ld_gan.utils.model_handler.apply_model(enc, imgs)
         
         dists, idxs = NearestNeighbors(n_neighbors=n_neighbors,
