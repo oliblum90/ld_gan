@@ -156,7 +156,7 @@ class Trainer:
         Z = np.concatenate(f_vecs)[:n_f_vecs]
 
         if self.trainable_enc:
-            Z = tensor_to_np(self.enc(np_to_tensor(X)))
+            Z = ld_gan.utils.model_handler.apply_model(self.enc, X)
             
         fname = os.path.join(self._path_hist_tsne, fname + "_hist_tsne.png")
         visualize.plot_hist_and_tsne(Z, 
