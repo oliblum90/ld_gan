@@ -63,7 +63,7 @@ class Enc(nn.Module):
         
         self.activation = activation
         self.add_clf_layer = add_clf_layer
-        self.n_blocks = int(np.log2(64) - 1)
+        self.n_blocks = int(np.log2(ipt_size) - 1)
         
         self.main = nn.Sequential()
         

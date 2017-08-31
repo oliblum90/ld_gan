@@ -46,7 +46,7 @@ class gen_64(nn.Module):
 class Gen(nn.Module):
     
     def __init__(self, 
-                 latent_size     = 100,
+                 latent_size     = 256,
                  ipt_size        = 64,
                  complexity      = 64,
                  n_col           = 3,
@@ -54,7 +54,7 @@ class Gen(nn.Module):
         
         super(Gen, self).__init__()
         
-        self.n_blocks = int(np.log2(64) - 1)
+        self.n_blocks = int(np.log2(ipt_size) - 1)
         self.main = nn.Sequential()
         self.extra_fc_layer = extra_fc_layer
         self.latent_size = latent_size
@@ -63,8 +63,9 @@ class Gen(nn.Module):
             self.fc0 = nn.Linear(latent_size, latent_size)
         
         # BLOCK 0
-        self.main.add_module('b00', CT(latent_size, complexity*8, 4, 1, 0, bias=False))
-        self.main.add_module('b01', nn.BatchNorm2d(complexity*8))
+        c_out = complexity * 2**(self.n_blocks - 2)
+        self.main.add_module('b00', CT(latent_size, c_out, 4, 1, 0, bias=False))
+        self.main.add_module('b01', nn.BatchNorm2d(c_out))
         self.main.add_module('b02', nn.ReLU(True))
 
         # BLOCKS 1 - N-1
@@ -88,7 +89,7 @@ class Gen(nn.Module):
         #    x = x.view(-1, self.latent_size)
         #    x = self.fc0(x)
         #    x = x.view(-1, self.latent_size, 1, 1)
-            
+                
         x = self.main(x)
         
         return x

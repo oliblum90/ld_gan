@@ -14,7 +14,7 @@ class Dis(nn.Module):
         
         super(Dis, self).__init__()
         
-        self.n_blocks = int(np.log2(64) - 1)
+        self.n_blocks = int(np.log2(ipt_size) - 1)
         self.main = nn.Sequential()
         
         # BLOCK 0
@@ -53,7 +53,7 @@ class InfoDis(nn.Module):
         
         super(InfoDis, self).__init__()
         
-        self.n_blocks = int(np.log2(64) - 1)
+        self.n_blocks = int(np.log2(ipt_size) - 1)
         self.main = nn.Sequential()
         
         # BLOCK 0

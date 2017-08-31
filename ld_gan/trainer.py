@@ -2,6 +2,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 import torch
+import ld_gan
 
 import visualize
 from data_proc.transformer import np_to_tensor, tensor_to_np
@@ -24,7 +25,8 @@ class Trainer:
                  gen_img_step      = 5,
                  gen_tsne_step     = 10,
                  save_model_step   = 50,
-                 trainable_enc     = False):
+                 trainable_enc     = False,
+                 bs_tsne_pts       = None):
         
         # set class variables
         if project_name is None:
@@ -53,6 +55,7 @@ class Trainer:
         self.iters_per_epoch  = n_samples / batch_size
         
         self.epoch_losses     = []
+        self.bs_tsne_pts      = bs_tsne_pts
         
         # init project
         init_project(project_name, ask_before_del = ask_before_del)
@@ -156,7 +159,9 @@ class Trainer:
         Z = np.concatenate(f_vecs)[:n_f_vecs]
 
         if self.trainable_enc:
-            Z = ld_gan.utils.model_handler.apply_model(self.enc, X)
+            Z = ld_gan.utils.model_handler.apply_model(self.enc, 
+                                                       X, 
+                                                       self.bs_tsne_pts)
             
         fname = os.path.join(self._path_hist_tsne, fname + "_hist_tsne.png")
         visualize.plot_hist_and_tsne(Z, 
