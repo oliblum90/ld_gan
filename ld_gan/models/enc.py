@@ -2,6 +2,7 @@ import torch.nn as nn
 from init_weights import init_weights
 import torch.nn.functional as F
 import numpy as np
+import torch
 
 
 class enc_64(nn.Module):
@@ -37,13 +38,16 @@ class enc_64(nn.Module):
         
         self.activation = activation
 
-    def forward(self, input):
-        output = self.main(input)
+    def forward(self, x):
+        x = self.main(x)
         
         if self.activation == "tanh":
-            output = F.tanh(output)
+            x = F.tanh(x)
+        elif self.activation == "auto_unify":
+            x = (x - x.mean()) / x.std()
+            x = 1. / (torch.exp(-(358. * x)/23. + 111. * torch.atan(37. * x / 294.)) + 1.)
             
-        return output
+        return x
     
 
     
@@ -55,14 +59,11 @@ class Enc(nn.Module):
                  complexity = 64,
                  n_col      = 3,
                  n_features = 256,
-                 activation = "tanh", 
-                 add_clf_layer = False, 
-                 n_classes = 102):
+                 activation = "tanh"):
         
         super(Enc, self).__init__()
         
         self.activation = activation
-        self.add_clf_layer = add_clf_layer
         self.n_blocks = int(np.log2(ipt_size) - 1)
         
         self.main = nn.Sequential()
@@ -84,9 +85,6 @@ class Enc(nn.Module):
         n = 'b' + str(self.n_blocks-1) + "0"
         self.main.add_module(n, nn.Conv2d(c_out, n_features, 4, 1, 0, bias=False))
         
-        # CLF-LAYER
-        if self.add_clf_layer:
-            self.clf = nn.Linear(n_features, n_classes)
 
     def forward(self, x):
         
@@ -94,11 +92,9 @@ class Enc(nn.Module):
             
         if self.activation == "tanh":
             x = F.tanh(x)
-            
-        if self.add_clf_layer:
-            x = x.view(x.size(0), x.size(1))
-            x = self.clf(x)
-            #x = F.softmax(x)
+        elif self.activation == "auto_unify":
+            x = (x - x.mean()) / x.std()
+            x = 1. / (torch.exp(-(358. * x)/23. + 111. * torch.atan(37. * x / 294.)) + 1.)
         
         return x
     

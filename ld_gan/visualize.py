@@ -425,6 +425,10 @@ def learning_curve_ia(project,
                 ax4.imshow(img)
                 ax4.set_title("hist / tsne")
             except:
+                hts = os.listdir(path_ht)
+                iters = [int(ht_str[:4]) for ht_str in hts]
+                idx = np.argmin(np.abs(np.array(iters) - event.xdata))
+                gen_tsne_epoch = iters[idx]
                 fname = str(gen_tsne_epoch).zfill(4) + "_hist_tsne.png"
                 fname = os.path.join(path_ht, fname)
                 img = scipy.misc.imread(fname)
