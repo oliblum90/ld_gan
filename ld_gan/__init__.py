@@ -5,3 +5,4 @@ import trainer
 import visualize
 import train_ops
 import sample
+import eval_gan

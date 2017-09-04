@@ -26,7 +26,8 @@ class Trainer:
                  gen_tsne_step     = 10,
                  save_model_step   = 50,
                  trainable_enc     = False,
-                 bs_tsne_pts       = None):
+                 bs_tsne_pts       = None,
+                 callbacks         = []):
         
         # set class variables
         if project_name is None:
@@ -44,6 +45,7 @@ class Trainer:
         
         self.sampler          = sampler
         self.train_ops        = train_ops
+        self.callbacks        = callbacks
         self.trainable_enc    = trainable_enc
         
         self._gen_img_step    = gen_img_step
@@ -203,6 +205,11 @@ class Trainer:
                 self._write_log(losses)
             
             self._show_training_status(epoch)
+            
+            # run callbacks
+            for cb in self.callbacks:
+                if epoch % cb.run_every_nth_epoch == 0:
+                    cb.run()
             
             # save generated imgs
             if epoch % self._gen_img_step == 0: 
