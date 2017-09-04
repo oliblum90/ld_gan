@@ -294,6 +294,11 @@ def learning_curve_ia(project,
         fname = os.path.join(path, project, 'log/logs.txt')
     else:
         fname = os.path.join(path, project, 'log', logs_fname)
+        logs = np.loadtxt(fname, skiprows=1, delimiter=" ")
+        fname_tmp = os.path.join(path, project, 'log/logs.txt')
+        logs_tmp = np.loadtxt(fname_tmp, skiprows=1, delimiter=" ")
+        iters_per_epoch = (len(logs) / float(len(logs_tmp))) * iters_per_epoch        
+        
     logs = np.loadtxt(fname, skiprows=1, delimiter=" ")
     labels = np.genfromtxt(fname, dtype='str')
     labels = labels[0] if labels.ndim > 1 else labels
@@ -335,12 +340,16 @@ def learning_curve_ia(project,
         logs = np.expand_dims(logs, axis = 1)
         
     for idx in range(logs.shape[1]):
-        ax1.plot(x, logs[:,idx], c=colors[idx], alpha = 0.2)
-        y = np.convolve(logs[:,idx], 
-                        np.ones((smooth,))/smooth, 
-                        mode='valid')
-        l1 = ax1.plot(xc, y, c=colors[idx], label=labels[idx])
-        ymax_temp = max(ymax_temp, y.max())
+        if smooth != 0:
+            ax1.plot(x, logs[:,idx], c=colors[idx], alpha = 0.2)
+            y = np.convolve(logs[:,idx], 
+                            np.ones((smooth,))/smooth, 
+                            mode='valid')
+            l1 = ax1.plot(xc, y, c=colors[idx], label=labels[idx])
+            ymax_temp = max(ymax_temp, y.max())
+        else:
+            ax1.plot(x, logs[:,idx], c=colors[idx])
+            ymax_temp = max(ymax_temp, logs[:,idx].max())
 
     # adjust the plot range
     if ymax is None:

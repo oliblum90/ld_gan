@@ -20,7 +20,8 @@ class InceptionScore:
                  n_samples=None, 
                  enc=None, 
                  gen=None,
-                 run_every_nth_epoch=5):
+                 run_every_nth_epoch=5,
+                 real_data_score=None):
         """
         Class for the computation of the inception score
         """
@@ -31,6 +32,7 @@ class InceptionScore:
         self.enc = enc
         self.gen = gen
         self.run_every_nth_epoch = run_every_nth_epoch
+        self.real_data_score = real_data_score
         
         # load model
         try:
@@ -85,6 +87,8 @@ class InceptionScore:
         
         # get score
         score = self.score(imgs)[0]
+        if real_data_score is not None:
+            score = score / real_data_score
         
         # write log
         line = str(score)

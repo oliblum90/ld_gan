@@ -42,6 +42,21 @@ def tensor_to_np(t):
     arr = np.squeeze(arr)
         
     return arr
+
+
+
+def transform(*args):
+    
+    if type(args[0]) is np.ndarray:
+        return np_to_tensor(*args)
         
-            
+    else:
+        np_arrs = []
+        for arg in args:
+            np_arrs.append(tensor_to_np(arg))
+        return np_arrs if len(np_arrs)>1 else np_arrs[0] 
+        
+        
+        
+        
         
