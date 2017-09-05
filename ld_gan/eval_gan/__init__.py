@@ -1,1 +1,2 @@
 from inception_score import InceptionScore
+from inception_mode_score import InceptionModeScore

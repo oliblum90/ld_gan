@@ -57,10 +57,13 @@ class InceptionScore:
         ])
         
         # init log
-        self.log_fname = os.path.join("projects", 
-                                      main.__file__, 
-                                      "log", 
-                                      "incept_score.txt")
+        try:
+            self.log_fname = os.path.join("projects", 
+                                          main.__file__, 
+                                          "log", 
+                                          "incept_score.txt")
+        except:
+            pass
         
     
     def _init_log(self):
@@ -87,8 +90,8 @@ class InceptionScore:
         
         # get score
         score = self.score(imgs)[0]
-        if real_data_score is not None:
-            score = score / real_data_score
+        if self.real_data_score is not None:
+            score = score / self.real_data_score
         
         # write log
         line = str(score)
