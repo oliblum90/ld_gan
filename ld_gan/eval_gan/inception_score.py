@@ -99,7 +99,7 @@ class InceptionScore:
             f.write("\n" + line)
         
     
-    def score(self, imgs, batch_size=32, splits=10):
+    def score(self, imgs, batch_size=32):
         """
         Function to compute the inception score
         
@@ -109,12 +109,6 @@ class InceptionScore:
             array of the shape (N, X, Y, C)
         batch_size : int
             batch size for the prediction with the inception net
-        splits : int
-            The inception score is computed for a package of images.
-            The variable 'splits' defines the number of these packages.
-            Multiple computations of the score (for each package one) are 
-            needed to compute a standard diviation (error) for the final
-            score.
         """
         
         print "compute inception score..."
@@ -137,16 +131,15 @@ class InceptionScore:
             preds.append(pred.data.cpu().numpy())    
         preds = np.concatenate(preds)
         
+        if len(preds) < 50000:
+            print ">= 50000 samples needed, but only {} provided".format(len(preds))
+        
         # compute inception score
-        scores = []
-        for i in range(splits):
-            part = preds[(i * preds.shape[0] // splits): \
-                         ((i + 1) * preds.shape[0] // splits), :]
-            kl = part * (np.log(part) - np.log(np.expand_dims(np.mean(part, 0), 0)))
-            kl = np.mean(np.sum(kl, 1))
-            scores.append(np.exp(kl))
+        kl = preds * (np.log(preds) - np.log(np.expand_dims(np.mean(preds, 0), 0)))
+        kl = np.mean(np.sum(kl, 1))
+        score = np.exp(kl)
             
-        return np.mean(scores), np.std(scores)
+        return score
     
     
 if __name__ == "__main__":

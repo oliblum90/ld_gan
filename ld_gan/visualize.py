@@ -802,7 +802,11 @@ def discriminator_certanty_curve(imgs_real,
                                  n_pts_tsne = 4000,
                                  alpha = 0.3,
                                  batch_size = 512,
-                                 n_interpol_imgs = 13):
+                                 n_interpol_imgs = 13,
+                                 dis_score_mode='center',
+                                 loss = None):
+    
+    ymin, ymax = 0., 0.5
     
     import matplotlib.pylab as plt
     
@@ -882,9 +886,41 @@ def discriminator_certanty_curve(imgs_real,
                 z = ld_gan.utils.model_handler.apply_model(enc, x)
                 z_current = z.copy()
                 z = np.tile(z, (len(z_encs), 1))
-                z = (z_encs + z) / 2.0
-                x = ld_gan.utils.model_handler.apply_model(gen, z, batch_size=batch_size)
-                d = ld_gan.utils.model_handler.apply_model(dis, x, batch_size=batch_size)
+                
+                if dis_score_mode == 'center':
+                    z = (z_encs + z) / 2.0
+                    x = ld_gan.utils.model_handler.apply_model(gen, z,
+                                                               batch_size=batch_size)
+                    d = ld_gan.utils.model_handler.apply_model(dis, x,
+                                                               batch_size=batch_size)
+                
+                elif dis_score_mode == 'mean':
+                    factors = np.linspace(0, 1, 10)
+                    zs = [z_encs*f + z*(1-f) for f in factors]
+                    dis_scores = []
+                    for z in zs:
+                        x = ld_gan.utils.model_handler.apply_model(gen, z,
+                                                                   batch_size=batch_size)
+                        d = ld_gan.utils.model_handler.apply_model(dis, x,
+                                                                   batch_size=batch_size)
+                        dis_scores.append(d)
+                    d = np.mean(np.array(dis_scores), axis=0)
+                
+                elif dis_score_mode == 'min':
+                    factors = np.linspace(0, 1, 10)
+                    zs = [z_encs*f + z*(1-f) for f in factors]
+                    dis_scores = []
+                    for z in zs:
+                        x = ld_gan.utils.model_handler.apply_model(gen, z,
+                                                                   batch_size=batch_size)
+                        d = ld_gan.utils.model_handler.apply_model(dis, x,
+                                                                   batch_size=batch_size)
+                        dis_scores.append(d)
+                    d = np.min(np.array(dis_scores), axis=0)
+                
+                if loss == "bce":
+                    d = -np.log(d)                    
+                    
                 idxs_sorted = np.argsort(d)
                 d_sorted = d[idxs_sorted]
                 imgs_real_sorted = imgs_real[idxs_sorted]
@@ -893,7 +929,7 @@ def discriminator_certanty_curve(imgs_real,
                 ax3.text(0.01, 0.9,'DisScore-Img-Plot', ha='left', va='center',
                          transform=ax3.transAxes)
                 ax3.plot(range(len(d)), d_sorted)
-                ax3.set_ylim([0.,0.5])
+                ax3.set_ylim([ymin, ymax])
 
                 np.save('/tmp/idxs_sorted.npy', idxs_sorted)
                 np.save('/tmp/z_current.npy', z_current)
@@ -904,7 +940,8 @@ def discriminator_certanty_curve(imgs_real,
 
                 ax1.clear()
                 ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = d[:len(z_mapped)], 
-                            s = 10, alpha = alpha, edgecolors='none', vmin=0., vmax=0.1)
+                            s = 10, alpha = alpha, edgecolors='none',
+                            vmin=ymin., vmax=ymax)
 
                 ax22.clear()
                 ax22.axis('off')
@@ -938,7 +975,7 @@ def discriminator_certanty_curve(imgs_real,
                 ax4.text(0.01, 0.9,'DisScore-LatentPath-Plot', ha='left', va='center',
                          transform=ax4.transAxes)
                 ax4.plot(range(len(d_interpolate)), d_interpolate)
-                ax4.set_ylim([0.,0.5])
+                ax4.set_ylim([ymin, ymax])
                 idxs_ip = np.linspace(0, 99, n_interpol_imgs).astype('int')
 
                 for idx, ax in zip(idxs_ip, interpolate_img_axs):
@@ -953,7 +990,7 @@ def discriminator_certanty_curve(imgs_real,
                 ax3.text(0.01, 0.9,'DisScore-Img-Plot', ha='left', va='center',
                          transform=ax3.transAxes)
                 ax3.plot(range(len(d_sorted)), d_sorted)
-                ax3.set_ylim([0.,0.5])
+                ax3.set_ylim([ymin, ymax])
                 ax3.scatter([x], [y])
 
                 #np.save('/tmp/click.npy', np.array([0]))
@@ -993,14 +1030,16 @@ def discriminator_certanty_curve(imgs_real,
             ax3.text(0.01, 0.9,'DisScore-Img-Plot', ha='left', va='center',
                      transform=ax3.transAxes)
             ax3.plot(range(len(d_sorted)), d_sorted)
-            ax3.set_ylim([0.,0.5])
+            ax3.set_ylim([ymin, ymax])
             ax3.scatter([x], [y])
             
-            ax4.set_ylim([0.,0.5])
+            ax4.set_ylim([ymin, ymax])
             idxs = np.linspace(0, 100-1, n_interpol_imgs).astype('int')
             
             for idx, ax in zip(idxs, interpolate_img_axs):
                 ax.imshow(x_interpolate[idx])
+                
+            ax1.set_title([ymin, ymax])
             
         if '(0.125,0.31' in str(event.inaxes):
             ax1.set_title('ax4')

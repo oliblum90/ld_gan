@@ -100,7 +100,7 @@ class InceptionModeScore:
             f.write("\n" + line)
         
     
-    def score(self, imgs_fake, imgs_real, batch_size=32, splits=10):
+    def score(self, imgs_fake, imgs_real, batch_size=32):
         """
         Function to compute the inception score
         
@@ -110,12 +110,6 @@ class InceptionModeScore:
             array of the shape (N, X, Y, C)
         batch_size : int
             batch size for the prediction with the inception net
-        splits : int
-            The inception score is computed for a package of images.
-            The variable 'splits' defines the number of these packages.
-            Multiple computations of the score (for each package one) are 
-            needed to compute a standard diviation (error) for the final
-            score.
         """
         
         # preprocess fake images
@@ -156,25 +150,15 @@ class InceptionModeScore:
             preds_real.append(pred.data.cpu().numpy())    
         preds_real = np.concatenate(preds_real)
         
-        # compute inception score
-        scores = []
-        for i in range(splits):
-            part_fake = preds_fake[(i * preds_fake.shape[0] // splits): \
-                         ((i + 1) * preds_fake.shape[0] // splits), :]
-            part_real = preds_real[(i * preds_real.shape[0] // splits): \
-                         ((i + 1) * preds_real.shape[0] // splits), :]
+        p_star = np.expand_dims(np.mean(preds_fake, 0), 0)
+        p      = np.expand_dims(np.mean(preds_real, 0), 0)
 
-            p_star = np.expand_dims(np.mean(part_fake, 0), 0)
-            p      = np.expand_dims(np.mean(part_real, 0), 0)
-
-            kl = part_fake * (np.log(part_fake) - np.log(p))
-            kl = np.mean(kl, 0)
-            kl = kl - (p_star * (np.log(p_star) - np.log(p)))
-            kl = np.exp(np.sum(kl))
-
-            scores.append(kl)
+        kl = preds_fake * (np.log(preds_fake) - np.log(p))
+        kl = np.mean(kl, 0)
+        kl = kl - (p_star * (np.log(p_star) - np.log(p)))
+        score = np.exp(np.sum(kl))
             
-        return np.mean(scores), np.std(scores)
+        return score
     
     
 if __name__ == "__main__":
