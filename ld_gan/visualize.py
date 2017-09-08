@@ -663,6 +663,354 @@ def tsne_real_fake_vis(imgs_real,
     
     
     
+    
+    
+    
+    
+    
+def tsne_to_interpol_arr(imgs_real, 
+                         y, 
+                         project, 
+                         epoch,
+                         small = False,
+                         n_imgs = 5,
+                         all_fake = False,
+                         z_mapped = None, 
+                         sampler = None,
+                         n_pts_tsne = 4000,
+                         n_neighbors = 5,
+                         alpha = 0.003,
+                         real_img_mode = "single"):
+    
+    import matplotlib.pylab as plt
+    
+    # load models
+    enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+    gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+    
+    if z_mapped is None:
+        epoch_str = str(epoch).zfill(4)
+        fname = "projects/" + project + "/tsne_pts/" \
+                          + epoch_str + "_" + str(n_pts_tsne) + ".npy"
+        
+        try:
+            z_mapped = np.load(fname)
+        
+        except:
+            print "compute tsne..."
+            f_X = ld_gan.utils.model_handler.apply_model(enc, imgs_real[:n_pts_tsne])
+            tsne = TSNE(n_components=2, 
+                        random_state=0, 
+                        metric = 'cosine', 
+                        learning_rate=1000)
+            z_mapped = tsne.fit_transform(f_X)
+            try:
+                os.mkdir("projects/" + project + "/tsne_pts")
+            except:
+                pass
+            np.save(fname, z_mapped)
+                         
+            
+        
+        
+    nbrs = NearestNeighbors(n_neighbors = n_neighbors).fit(z_mapped)
+    
+    if small:
+        fig = plt.figure(figsize = (6.,3.))
+    else:
+        fig = plt.figure(figsize = (10.,5.))
+    ax1 = fig.add_subplot(1,2,1)
+    ax2 = fig.add_subplot(1,2,2)
+    
+    ax2.axis('off')
+
+    ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = y[:len(z_mapped)], 
+                s = 10, alpha = alpha, edgecolors='none')
+    
+    def onclick(event):
+        dists, idxs = nbrs.kneighbors(np.array([[event.xdata, event.ydata]]))
+        idx = idxs[0][0]
+        print('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
+              (event.button, idx, event.y, event.xdata, event.ydata))
+                
+        imgs = imgs_real[idxs[0]]
+        z_encs = []
+        for idx in idxs[0]:
+            z_enc = ld_gan.utils.model_handler.apply_model(enc, np.array([imgs_real[idx]]))
+            z_encs.append(z_enc)
+                
+        Z_enc_00 = z_encs[0]
+        Z_enc_10 = z_encs[1]
+        Z_enc_01 = z_encs[2]
+        Z_enc_11 = z_encs[3]
+                
+        img_size = imgs_real.shape[1]
+        arr_img = np.zeros((img_size * n_imgs, img_size * n_imgs, 3))
+                
+        for x in range(n_imgs):
+            for y in range(n_imgs):
+                                
+                x_factor = x / float(n_imgs-1.)
+                y_factor = y / float(n_imgs-1.)
+                
+                
+                z_00_factor = (1. - x_factor) * (1. - y_factor)
+                z_10_factor = (x_factor) * (1. - y_factor)
+                z_01_factor = (1. - x_factor) * (y_factor)
+                z_11_factor = (x_factor) * (y_factor)
+                                
+                z_enc = Z_enc_00 * z_00_factor + \
+                        Z_enc_10 * z_10_factor + \
+                        Z_enc_01 * z_01_factor + \
+                        Z_enc_11 * z_11_factor
+                
+                z_enc = np.array([z_enc])
+                        
+                if sampler is not None:
+                    z_enc = sampler(z_enc)
+                
+                img_fake = ld_gan.utils.model_handler.apply_model(gen, z_enc)
+                        
+                pos_x_min = x * img_size
+                pos_x_max = (x+1) * img_size
+                pos_y_min = y * img_size
+                pos_y_max = (y+1) * img_size
+                
+                arr_img[pos_x_min:pos_x_max, pos_y_min:pos_y_max] = img_fake
+                
+        if all_fake == False:
+            arr_img[:img_size, :img_size] = imgs[0]
+            arr_img[:img_size, -img_size:] = imgs[2]
+            arr_img[-img_size:, :img_size] = imgs[1]
+            arr_img[-img_size:, -img_size:] = imgs[3]
+        
+        arr_img = arr_img.astype('uint8')
+        
+        ax2.imshow(arr_img, cmap='gray')
+
+    cid = fig.canvas.mpl_connect('button_press_event', onclick)
+    
+    
+    
+    
+    
+def discriminator_certanty_curve(imgs_real, 
+                                 y,
+                                 project, 
+                                 epoch,
+                                 z_mapped = None,
+                                 n_pts_tsne = 4000,
+                                 alpha = 0.3,
+                                 batch_size = 512,
+                                 n_interpol_imgs = 13):
+    
+    import matplotlib.pylab as plt
+    
+    # load models
+    enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+    gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+    dis = ld_gan.utils.model_handler.load_model(project, epoch, "dis")
+   
+    # load tsne 
+    if z_mapped is None:
+        epoch_str = str(epoch).zfill(4)
+        fname = "projects/" + project + "/tsne_pts/" \
+                          + epoch_str + "_" + str(n_pts_tsne) + ".npy"
+        try:
+            z_mapped = np.load(fname)
+        except:
+            print "compute tsne..."
+            f_X = ld_gan.utils.model_handler.apply_model(enc, imgs_real[:n_pts_tsne])
+            tsne = TSNE(n_components=2, 
+                        random_state=0, 
+                        metric = 'cosine', 
+                        learning_rate=1000)
+            z_mapped = tsne.fit_transform(f_X)
+            try:
+                os.mkdir("projects/" + project + "/tsne_pts")
+            except:
+                pass
+            np.save(fname, z_mapped)
+    nbrs = NearestNeighbors(n_neighbors = 1).fit(z_mapped)
+
+    # load fig
+    import matplotlib.gridspec as gridspec
+    fig = plt.figure(figsize = (10.,10.))
+    gs = gridspec.GridSpec(4, 3)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax21 = fig.add_subplot(gs[0, 1])
+    ax22 = fig.add_subplot(gs[0, 2])
+    ax3 = fig.add_subplot(gs[1, :])
+    ax4 = fig.add_subplot(gs[2, :])
+    ax21.axis('off')
+    ax22.axis('off')
+    
+    gs00 = gridspec.GridSpecFromSubplotSpec(1, n_interpol_imgs, subplot_spec=gs[3, :])
+    interpolate_img_axs = [fig.add_subplot(g) for g in gs00]
+    [ax.axis('off') for ax in interpolate_img_axs]
+    
+    # plot tsne
+    ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = y[:len(z_mapped)], 
+                s = 10, alpha = alpha, edgecolors='none')
+    
+    z_encs = ld_gan.utils.model_handler.apply_model(enc, 
+                                                    imgs_real, 
+                                                    batch_size = batch_size)
+    
+    np.save('/tmp/click.npy', np.array([0]))
+    
+    def onclick(event):
+        
+        dists, idxs = nbrs.kneighbors(np.array([[event.xdata, event.ydata]]))
+        idx = idxs[0][0]
+        
+        click = np.load('/tmp/click.npy')[0]
+        
+        if '0.125,0.71' in str(event.inaxes):
+            
+            # plot chosen img
+            if click == 0:
+                
+                _, idxs = nbrs.kneighbors(np.array([[event.xdata, event.ydata]]))
+                img = imgs_real[idxs[0][0]]
+                ax21.imshow(img, cmap='gray')
+                x = np.array([img])
+                d = ld_gan.utils.model_handler.apply_model(dis, x)
+                ax21.set_title("dis(img) = " + str(np.round(d, 3)))
+
+                # create ordered dis curve
+                z = ld_gan.utils.model_handler.apply_model(enc, x)
+                z_current = z.copy()
+                z = np.tile(z, (len(z_encs), 1))
+                z = (z_encs + z) / 2.0
+                x = ld_gan.utils.model_handler.apply_model(gen, z, batch_size=batch_size)
+                d = ld_gan.utils.model_handler.apply_model(dis, x, batch_size=batch_size)
+                idxs_sorted = np.argsort(d)
+                d_sorted = d[idxs_sorted]
+                imgs_real_sorted = imgs_real[idxs_sorted]
+                z_sorted = z[idxs_sorted]
+                ax3.clear()
+                ax3.text(0.01, 0.9,'DisScore-Img-Plot', ha='left', va='center',
+                         transform=ax3.transAxes)
+                ax3.plot(range(len(d)), d_sorted)
+                ax3.set_ylim([0.,0.5])
+
+                np.save('/tmp/idxs_sorted.npy', idxs_sorted)
+                np.save('/tmp/z_current.npy', z_current)
+                np.save('/tmp/z_sorted.npy', z_sorted)
+                np.save('/tmp/d_sorted.npy', d_sorted)
+                np.save('/tmp/imgs_real_sorted.npy', imgs_real_sorted)
+                np.save('/tmp/d.npy', d)
+
+                ax1.clear()
+                ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = d[:len(z_mapped)], 
+                            s = 10, alpha = alpha, edgecolors='none', vmin=0., vmax=0.1)
+
+                ax22.clear()
+                ax22.axis('off')
+                ax4.clear()
+                ax4.text(0.01, 0.9,'DisScore-LatentPath-Plot', ha='left', va='center',
+                     transform=ax4.transAxes)
+                [ax.clear() for ax in interpolate_img_axs]
+                [ax.axis('off') for ax in interpolate_img_axs]
+                
+                np.save('/tmp/click.npy', np.array([1]))
+            
+            if click == 1:
+                _, idxs = nbrs.kneighbors(np.array([[event.xdata, event.ydata]]))
+                img = imgs_real[idxs[0][0]]
+                
+                idx = int(event.xdata)
+                z_sorted = np.load('/tmp/z_sorted.npy')
+                imgs_real_sorted = np.load('/tmp/imgs_real_sorted.npy')
+                z1 = np.load('/tmp/z_current.npy')
+
+                d = ld_gan.utils.model_handler.apply_model(dis, np.array([img]))
+                ax22.set_title("dis(img) = " + str(np.round(d, 3)))
+                ax22.imshow(img)
+
+                z2 = ld_gan.utils.model_handler.apply_model(enc, np.array([img]))            
+                factors = np.linspace(0, 1, 100)
+                z_interpolate = np.array([z2*f + z1*(1-f) for f in factors])
+                x_interpolate = ld_gan.utils.model_handler.apply_model(gen, z_interpolate)
+                d_interpolate = ld_gan.utils.model_handler.apply_model(dis, x_interpolate)
+                ax4.clear()
+                ax4.text(0.01, 0.9,'DisScore-LatentPath-Plot', ha='left', va='center',
+                         transform=ax4.transAxes)
+                ax4.plot(range(len(d_interpolate)), d_interpolate)
+                ax4.set_ylim([0.,0.5])
+                idxs_ip = np.linspace(0, 99, n_interpol_imgs).astype('int')
+
+                for idx, ax in zip(idxs_ip, interpolate_img_axs):
+                    ax.imshow(x_interpolate[idx])
+                    
+                idxs_sorted = np.load('/tmp/idxs_sorted.npy')
+                d_sorted = np.load('/tmp/d_sorted.npy')
+                d = np.load('/tmp/d.npy')
+                x = np.where(d_sorted == d[idxs[0][0]])[0][0]
+                y = d[idxs[0][0]]
+                ax3.clear()
+                ax3.text(0.01, 0.9,'DisScore-Img-Plot', ha='left', va='center',
+                         transform=ax3.transAxes)
+                ax3.plot(range(len(d_sorted)), d_sorted)
+                ax3.set_ylim([0.,0.5])
+                ax3.scatter([x], [y])
+
+                #np.save('/tmp/click.npy', np.array([0]))
+                
+            
+            
+        if '(0.547727' in str(event.inaxes):
+            ax1.set_title('ax2')
+            
+        if '(0.125,0.51' in str(event.inaxes):
+
+            idx = int(event.xdata)
+            z_sorted = np.load('/tmp/z_sorted.npy')
+            imgs_real_sorted = np.load('/tmp/imgs_real_sorted.npy')
+            z1 = np.load('/tmp/z_current.npy')
+            
+            img = imgs_real_sorted[idx]
+            d = ld_gan.utils.model_handler.apply_model(dis, np.array([img]))
+            ax22.set_title("dis(img) = " + str(np.round(d, 3)))
+            ax22.imshow(img)
+            
+            z2 = ld_gan.utils.model_handler.apply_model(enc, np.array([img]))            
+            factors = np.linspace(0, 1, 100)
+            z_interpolate = np.array([z2*f + z1*(1-f) for f in factors])
+            x_interpolate = ld_gan.utils.model_handler.apply_model(gen, z_interpolate)
+            d_interpolate = ld_gan.utils.model_handler.apply_model(dis, x_interpolate)
+            ax4.clear()
+            ax4.text(0.01, 0.9,'DisScore-LatentPath-Plot', ha='left', va='center',
+                     transform=ax4.transAxes)
+            ax4.plot(range(len(d_interpolate)), d_interpolate)
+            
+            idxs_sorted = np.load('/tmp/idxs_sorted.npy')
+            d_sorted = np.load('/tmp/d_sorted.npy')
+            x = idx
+            y = d_sorted[x]
+            ax3.clear()
+            ax3.text(0.01, 0.9,'DisScore-Img-Plot', ha='left', va='center',
+                     transform=ax3.transAxes)
+            ax3.plot(range(len(d_sorted)), d_sorted)
+            ax3.set_ylim([0.,0.5])
+            ax3.scatter([x], [y])
+            
+            ax4.set_ylim([0.,0.5])
+            idxs = np.linspace(0, 100-1, n_interpol_imgs).astype('int')
+            
+            for idx, ax in zip(idxs, interpolate_img_axs):
+                ax.imshow(x_interpolate[idx])
+            
+        if '(0.125,0.31' in str(event.inaxes):
+            ax1.set_title('ax4')
+            
+        
+    cid = fig.canvas.mpl_connect('button_press_event', onclick)
+    
+    
+    
+    
 def move_in_z_space(project, img1, img2, epoch, sampler = None):
     
     import matplotlib.pylab as plt
