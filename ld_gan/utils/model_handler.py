@@ -44,3 +44,25 @@ def apply_model(model, data, batch_size = None, cpu = False):
         arr_out = np.concatenate(arr_out)
     
     return arr_out
+
+
+def apply_models(data, batch_size, *models):
+    
+    if batch_size == None:
+        data = [data]
+    elif batch_size >= len(data):
+        data = [data]
+    else:
+        n_batches = len(data) / batch_size
+        data = np.array_split(data, n_batches)
+    
+    arr_out = []
+    for d in data:
+        t  = np_to_tensor(d)
+        for m in models:
+            t = m(t)
+        arr_out.append(tensor_to_np(t))
+    arr_out = np.concatenate(arr_out)
+    
+    return arr_out
+

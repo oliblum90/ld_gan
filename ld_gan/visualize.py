@@ -941,7 +941,7 @@ def discriminator_certanty_curve(imgs_real,
                 ax1.clear()
                 ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = d[:len(z_mapped)], 
                             s = 10, alpha = alpha, edgecolors='none',
-                            vmin=ymin., vmax=ymax)
+                            vmin=ymin, vmax=ymax)
 
                 ax22.clear()
                 ax22.axis('off')
