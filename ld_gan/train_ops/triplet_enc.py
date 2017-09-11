@@ -5,7 +5,10 @@ from torch.autograd import Variable
 import torch.optim as optim
 import numpy as np
 from ld_gan.utils.model_handler import apply_model, apply_models
+from ld_gan.data_proc.transformer import np_to_tensor, tensor_to_np
 import torch.nn.functional as F
+from sklearn.utils import shuffle
+
 
     
 class TripletEnc:
@@ -18,7 +21,6 @@ class TripletEnc:
                  lr,
                  margin,
                  p,
-                 z_all, 
                  n_interpol, 
                  n_candidates,
                  mode = 'min'):
@@ -40,29 +42,40 @@ class TripletEnc:
         self.opt_enc = optim.Adam(self.tnet.parameters(), lr=lr)
         
     
-    # Z are the chosen anchors
     def train(self, X, Y, Z, Z_bar):
 
         # prepare data
-        z_all = z_enc = apply_model(self.enc, self.imgs)
-        anchors = tensor_to_np(Z)
-        anchors, zs_pos, zs_neg = generate_triplets(self.gen, 
-                                                    self.dis, 
-                                                    anchors, 
-                                                    z_all, 
-                                                    self.n_interpol, 
-                                                    self.n_candidates,
-                                                    mode = self.mode)
-
-        anchors, zs_pos, zs_neg = np_to_tensor(anchors, zs_pos, zs_neg)
+        anchors = tensor_to_np(X)
         
+        anchors, pos, neg = generate_triplets(self.enc,
+                                              self.gen, 
+                                              self.dis, 
+                                              anchors, 
+                                              self.imgs, 
+                                              self.n_interpol, 
+                                              self.n_candidates,
+                                              mode = self.mode)
+
+        anchors, pos, neg = np_to_tensor(anchors, pos, neg)
+        
+        dista, distb, embedded_x, embedded_y, embedded_z = self.tnet(anchors, 
+                                                                     pos, 
+                                                                     neg)
+        
+        target = torch.FloatTensor(dista.size()).fill_(1)
+        target = target.cuda()
+        target = Variable(target)
+        
+        loss_triplet = self.criterion(dista, distb, target)
+        loss_embedd = embedded_x.norm(2) + embedded_y.norm(2) + embedded_z.norm(2)
+        loss = loss_triplet + 0.001 * loss_embedd
+
         # train
-        err = self.criterion(anchors, zs_pos, zs_neg)
-        err.backward()
-        mean_x = x.data.mean()
+        self.enc.zero_grad()
+        loss.backward()
         self.opt_enc.step()
         
-        return err.cpu().data.numpy()[0]
+        return loss.cpu().data.numpy()[0]
     
 
 class Tripletnet(nn.Module):
@@ -74,15 +87,21 @@ class Tripletnet(nn.Module):
         embedded_x = self.embeddingnet(x)
         embedded_y = self.embeddingnet(y)
         embedded_z = self.embeddingnet(z)
+        
+        embedded_x = torch.squeeze(embedded_x)
+        embedded_y = torch.squeeze(embedded_x)
+        embedded_z = torch.squeeze(embedded_x)
+        
         dist_a = F.pairwise_distance(embedded_x, embedded_y, 2)
         dist_b = F.pairwise_distance(embedded_x, embedded_z, 2)
         return dist_a, dist_b, embedded_x, embedded_y, embedded_z
     
     
-def generate_triplets(gen, 
+def generate_triplets(enc,
+                      gen, 
                       dis, 
-                      anchors, 
-                      z_all, 
+                      anchors_x, 
+                      x_all,
                       n_interpol, 
                       n_candidates,
                       mode = 'min'):
@@ -91,15 +110,22 @@ def generate_triplets(gen,
     # 1. prepare z vectors
     #######################################
     
+    # map images to latent space
+    z_all = apply_models(x_all, None, enc)
+    anchors = apply_models(anchors_x, None, enc)
+    
     n_ancs     = anchors.shape[0]
     n_features = anchors.shape[1]
     zs_shape   = (n_interpol, n_ancs, n_candidates, n_features)
     ds_shape   = (n_interpol, n_ancs, n_candidates)
     
     n_can_total = n_ancs * n_candidates
-    z_all = np.random.shuffle(z_all)
+    x_all, z_all = shuffle(x_all, z_all)
     z_all = np.tile(z_all, (n_can_total / len(z_all) + 1, 1))[:n_can_total]
+    x_all = np.tile(x_all, (n_can_total / len(x_all) + 1, 1, 1, 1))[:n_can_total]
+    
     candidates = np.split(z_all, n_ancs)
+    candidates_x = np.split(x_all, n_ancs)
     
     zs = np.zeros(zs_shape)
     for i1 in range(n_interpol):
@@ -107,8 +133,8 @@ def generate_triplets(gen,
             z_anc = anchors[i2]
             z_can = candidates[i2]
             z_anc = np.tile(z_anc, (n_candidates, 1))
-            f1 = i1/float(N_INTERPOL-1)
-            f2 = 1 - i1/float(N_INTERPOL-1)
+            f1 = i1/float(n_interpol-1)
+            f2 = 1 - i1/float(n_interpol-1)
             zs[i1, i2] = f1*z_anc + f2*z_anc
             
     zs = zs.reshape(-1, n_features)
@@ -134,10 +160,12 @@ def generate_triplets(gen,
     idxs_pos = np.argmax(ds, axis=1)
     idxs_neg = np.argmin(ds, axis=1)
     
-    zs_pos = np.array([c[i] for c, i in zip(candidates, idxs_pos)])
-    zs_neg = np.array([c[i] for c, i in zip(candidates, idxs_neg)])
-    
+    #zs_pos = np.array([c[i] for c, i in zip(candidates, idxs_pos)])
+    #zs_neg = np.array([c[i] for c, i in zip(candidates, idxs_neg)])
+       
+    xs_pos = np.array([c[i] for c, i in zip(candidates_x, idxs_pos)])
+    xs_neg = np.array([c[i] for c, i in zip(candidates_x, idxs_neg)])
         
-    return anchors, zs_pos, zs_neg
+    return anchors_x, xs_pos, xs_neg
             
             

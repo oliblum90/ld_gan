@@ -9,4 +9,5 @@ from floss_gen import FLoss
 from infogan_dis import InfoDis
 from infogan_gen import InfoGen
 from vggae import VGGAutoEnc
+from triplet_enc import TripletEnc
 import triplet_enc
