@@ -5,7 +5,7 @@ from torch.autograd import Variable
 import torch.optim as optim
 import numpy as np
 from ld_gan.utils.model_handler import apply_model, apply_models
-from tripletnet import Tripletnet
+import torch.nn.functional as F
 
     
 class TripletEnc:
@@ -64,6 +64,19 @@ class TripletEnc:
         
         return err.cpu().data.numpy()[0]
     
+
+class Tripletnet(nn.Module):
+    def __init__(self, embeddingnet):
+        super(Tripletnet, self).__init__()
+        self.embeddingnet = embeddingnet
+
+    def forward(self, x, y, z):
+        embedded_x = self.embeddingnet(x)
+        embedded_y = self.embeddingnet(y)
+        embedded_z = self.embeddingnet(z)
+        dist_a = F.pairwise_distance(embedded_x, embedded_y, 2)
+        dist_b = F.pairwise_distance(embedded_x, embedded_z, 2)
+        return dist_a, dist_b, embedded_x, embedded_y, embedded_z
     
     
 def generate_triplets(gen, 
@@ -84,6 +97,7 @@ def generate_triplets(gen,
     ds_shape   = (n_interpol, n_ancs, n_candidates)
     
     n_can_total = n_ancs * n_candidates
+    z_all = np.random.shuffle(z_all)
     z_all = np.tile(z_all, (n_can_total / len(z_all) + 1, 1))[:n_can_total]
     candidates = np.split(z_all, n_ancs)
     
