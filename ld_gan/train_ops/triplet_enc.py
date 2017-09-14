@@ -25,6 +25,7 @@ class TripletEnc:
                  n_neg = 10,
                  quantile_pos = 0.05,
                  quantile_neg = 0.3,
+                 n_anchors = None,
                  mode = 'min'):
         
         self.criterion = nn.TripletMarginLoss(margin=0.2, p=2)
@@ -40,6 +41,7 @@ class TripletEnc:
         self.n_interpol = n_interpol
         self.n_pos = n_pos
         self.n_neg = n_neg
+        self.n_anchors = n_anchors
         self.quantile_pos = quantile_pos
         self.quantile_neg = quantile_neg
         self.mode = mode
@@ -50,7 +52,10 @@ class TripletEnc:
     def train(self, X, Y, Z, Z_bar):
 
         # prepare data
-        anchors = tensor_to_np(X)
+        if self.n_anchors is None:
+            anchors = tensor_to_np(X)
+        else:
+            anchors = tensor_to_np(X)[:self.n_anchors]
         
         anchors, pos, neg = generate_triplets(self.enc,
                                               self.gen, 
@@ -155,7 +160,7 @@ def generate_triplets(enc,
             z_anc = np.tile(z_anc, (n_candidates, 1))
             f1 = i1/float(n_interpol-1)
             f2 = 1 - i1/float(n_interpol-1)
-            zs[i1, i2] = f1*z_anc + f2*z_anc
+            zs[i1, i2] = f1*z_anc + f2*z_can
             
     zs = zs.reshape(-1, n_features)
             
@@ -220,4 +225,36 @@ def get_enc_space_suggestion(z_anc,
     return idxs_pos, idxs_neg
 
 
+
+def get_dis_score_from_z(z_anc, z_can, gen, dis, n_interpol=7, mode='min'):
+    
+    n_features = z_anc.shape[1]
+    n_candidates = len(z_can)
+    zs_shape   = (n_interpol, n_candidates, n_features)
+    ds_shape   = (n_interpol, n_candidates)
+    
+    z_anc = np.tile(z_anc, (n_candidates, 1))
+    zs = np.zeros(zs_shape)
+    for i in range(n_interpol):
+        f1 = i/float(n_interpol-1)
+        f2 = 1 - i/float(n_interpol-1)
+        zs[i] = f1*z_anc + f2*z_can
+    
+    zs = zs.reshape(-1, n_features)
+    
+    ds = apply_models(zs, 500, gen, dis)
+    ds = ds.reshape(ds_shape)
+    
+    #return ds
+    
+    if mode == 'min':
+        ds = np.min(ds, axis=1)
+    elif mode == 'mean':
+        ds = np.mean(ds, axis=1)
+    
+    return ds
+
+    
+def get_dis_score_from_x(x_anc, x_candidates, enc, gen, dis):
+    pass
 

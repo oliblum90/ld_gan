@@ -9,7 +9,7 @@ from multiprocessing import Pool
 
 PATH_MNIST   = "/export/home/oblum/projects/ls_gan/data/mnist/jpg_32"
 PATH_FLOWER  = "/export/home/oblum/projects/ls_gan/data/flowers_102/jpg_128"
-PATH_CELEBA  = "/export/home/oblum/projects/ls_gan/data/celebA/jpg_128"
+PATH_CELEBA  = "/export/home/oblum/projects/ls_gan/data/celebA/jpg_64"
 PATH_FLOWER_17 = "/export/home/oblum/projects/ls_gan/data/flowers_17/jpg_64"
 
 
@@ -28,7 +28,8 @@ def load_data_mp(path,
     elif path == 1:
         path = PATH_FLOWER
     elif path == 2:
-        path = PATH_CELEBA
+        #path = PATH_CELEBA
+        return load_celeba()
     
     print "load data from '{}'".format(path)
     
@@ -71,8 +72,33 @@ def load_imgs(path):
     return [scipy.misc.imread(n) for n in fnames]
 
 
+def _load_single_celeba(lab_vec):
+    path = '/export/home/oblum/projects/ls_gan/data/celebA/jpg_64/'
+    path = os.path.join(path, lab_vec[0])
+    img = scipy.misc.imread(path)
+    lab_vec = np.array(lab_vec[1:]).astype('int')
+    return [img, lab_vec]
 
-
+def load_celeba(n_jobs=10):
+    
+    # load labels
+    fname = '/export/home/oblum/projects/ls_gan/data/celebA/list_attr_celeba.txt'
+    with open(fname, 'r') as f:
+        label_str = f.read()
+    label_str = label_str.replace('  ', ' ')
+    lines = label_str.split('\r\n')
+    labels = [s.split(' ') for s in lines[2:]][:-1]
+    
+    #p = Pool(n_jobs)
+    #out = p.map(_load_single_celeba, labels)
+    out = _imap_unordered_bar(_load_single_celeba, labels, n_processes = n_jobs)
+    
+    x = np.array([o[0] for o in out])
+    y = np.array([o[1] for o in out])
+    
+    y[y == -1] = 0
+    
+    return x, y
 
 
 
@@ -93,7 +119,8 @@ def load_data(path,
     elif path == 1:
         path = PATH_FLOWER
     elif path == 2:
-        path = PATH_CELEBA
+        #path = PATH_CELEBA
+        return load_celeba()
     
     print "load data from '{}'".format(path)
     

@@ -11,12 +11,22 @@ import os
 
 class _ClfLayer(nn.Module):
     
-    def __init__(self, n_features, n_classes):
+    def __init__(self, n_features, n_classes, multi_label):
         
         super(_ClfLayer, self).__init__()
-        self.main = nn.Sequential(
-            nn.Linear(n_features, n_classes),
-        )
+        
+        if multi_label:
+            self.main = nn.Sequential(
+                nn.Linear(n_features, n_classes),
+                nn.Sigmoid()
+            )
+            
+        else:
+            self.main = nn.Sequential(
+                nn.Linear(n_features, n_classes),
+                nn.Softmax()
+            )
+        
         self.main.apply(init_weights)
         self.main.cuda()
         
@@ -31,18 +41,29 @@ class _ClfLayer(nn.Module):
     
 class Clf:
     
-    def __init__(self, enc, lr, n_features, n_classes, write_log=True):
+    def __init__(self, 
+                 enc, 
+                 lr, 
+                 n_features, 
+                 n_classes, 
+                 multi_label = False,
+                 write_log=True):
         
-        self.criterion = nn.CrossEntropyLoss()
+        if multi_label:
+            self.criterion = nn.BCELoss()
+        else:
+            self.criterion = nn.CrossEntropyLoss()
         self.criterion.cuda()
         
         self.enc = enc
-        self.clf_layer = _ClfLayer(n_features, n_classes)
+        self.clf_layer = _ClfLayer(n_features, n_classes, multi_label)
         
         self.opt_enc = optim.Adam(self.enc.parameters(), lr=lr)
         self.opt_clf_layer = optim.Adam(self.clf_layer.parameters(), lr=lr)
         #self.opt_enc = optim.SGD(self.enc.parameters(), lr=lr, momentum=0.9)
         #self.opt_clf_layer = optim.SGD(self.clf_layer.parameters(), lr=lr, momentum=0.9)
+        
+        self.multi_label = multi_label
         
         self.write_log = write_log
         self.log_fname = os.path.join("projects", 
@@ -65,7 +86,13 @@ class Clf:
         z = self.enc(X)
         y = self.clf_layer(z)
         
-        err = self.criterion(y, Y)
+        if self.multi_label:
+            err = 0
+            for sy, SY in zip(y.split(1), Y.split(1)):
+                err += self.criterion(sy, SY)
+        else:
+            err = self.criterion(y, Y)
+            
         err.backward()
         mean = y.data.mean()
         
@@ -73,7 +100,7 @@ class Clf:
         self.opt_clf_layer.step()
         
         # write log
-        if self.write_log:
+        if self.write_log and (self.multi_label == False):
             
             if os.path.isfile(self.log_fname) == False:
                 self._init_log()
@@ -86,7 +113,6 @@ class Clf:
             line = str(acc)
             with open(self.log_fname, 'a') as f:
                 f.write("\n" + line)
-        
         
         return err.cpu().data.numpy()[0]
     

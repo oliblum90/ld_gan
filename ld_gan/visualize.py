@@ -3,6 +3,7 @@ import inspect, re
 import numpy as np
 # import cv2
 import scipy.misc
+import sklearn
 from matplotlib import gridspec
 import matplotlib
 from sklearn.manifold import TSNE
@@ -44,13 +45,16 @@ def show_training_status(fname, epoch, d_loss, g_loss, d_test_loss):
     np.save(fname, history)
     
             
-def disp(img_list, title_list = None, fname = None):
+def disp(img_list, title_list = None, fname = None, figsize=None):
     """
     display a list of images
     """
     import matplotlib.pylab as plt
 
-    plt.figure()
+    if figsize is None:
+        plt.figure()
+    else:
+        plt.figure(figsize=figsize, dpi=180)
 
     for idx, img in enumerate(img_list):
 
@@ -1094,26 +1098,33 @@ def move_in_z_space(project, img1, img2, epoch, sampler = None):
     
 
 
-def img_to_img(imgs, project, gen_epoch, enc_epoch = None):
     
-    from keras.models import load_model
-    import tensorflow as tf
-    from matplotlib.widgets import Slider, Button, RadioButtons
+def show_base_and_neighbors(project, imgs, base_img_idx=None, n_neighbors=5):
     
-    # load models
-    epoch_str = str(gen_epoch).zfill(4)
-    enc_epoch_str = str(enc_epoch).zfill(4)
-    gen = load_model("projects/" + project + "/model/gen.h5")
-    gen.load_weights("projects/" + project + "/model/g_" + epoch_str + ".h5")
-    enc = load_model("projects/" + project + "/model/enc.h5", custom_objects={"tf": tf})
-    if enc_epoch is not None:
-        enc.load_weights("projects/" + project + "/model/e_" + enc_epoch_str + ".h5")
+    path = os.path.join("projects", project, "model")
+    epochs = sorted([int(g[2:6]) for g in os.listdir(path) if "g_" in g])
+    
+    if base_img_idx is None:
+        base_img_idx = np.random.randint(0, len(imgs)-1, 1)
     else:
-        enc.load_weights("projects/" + project + "/model/enc_w_0.h5")
+        base_img_idx = [base_img_idx]
         
-    fake_imgs = gen.predict(enc.predict(imgs))
-            
-    return fake_imgs
+    base_img = imgs[base_img_idx]
+    disp(base_img, figsize=(6,2))
+    
+    for epoch in epochs:
+        
+        enc = ld_gan.utils.model_handler.load_model(project, epoch, 'enc')
+        z_all = ld_gan.utils.model_handler.apply_model(enc, imgs, 1000)
+        z_base = z_all[base_img_idx]
+
+        dists = sklearn.metrics.pairwise_distances(z_all, z_base)
+        dists = np.squeeze(dists)
+        idxs = np.argsort(dists)[1:n_neighbors+1]
+        
+        nn_imgs = imgs[idxs]
+        
+        disp(nn_imgs, figsize=(6,2))
     
     
     
