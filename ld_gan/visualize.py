@@ -283,10 +283,16 @@ def learning_curve_ia(project,
                       ymax            = None,
                       show_hist_tsne  = False,
                       high_res        = False,
-                      logs_fname      = None):
+                      logs_fname      = None,
+                      mean            = True):
     
     import matplotlib.pylab as plt
     matplotlib.rcParams.update({'font.size': 8})
+    
+    if mean:
+        img_ending = "_fake.png"
+    else:
+        img_ending = "_mean_fake.png"
     
     try:
         fname = "projects/" + project + "/log/iters_per_epoch"
@@ -375,8 +381,8 @@ def learning_curve_ia(project,
     except:
         gen_tsne_epoch = 0
     
-    # show fake image    
-    fname = str(gen_img_epoch).zfill(4) + "_fake.png"
+    # show fake image
+    fname = str(gen_img_epoch).zfill(4) + img_ending
     fname = os.path.join(path_img, fname)
     try:
         img = scipy.misc.imread(fname)
@@ -420,7 +426,7 @@ def learning_curve_ia(project,
         idx = np.argmin(np.abs(np.array(iters) - event.xdata))
         gen_img_epoch = iters[idx]
                 
-        fname = str(gen_img_epoch).zfill(4) + "_fake.png"
+        fname = str(gen_img_epoch).zfill(4) + img_ending
         fname = os.path.join(path_img, fname)
         img = scipy.misc.imread(fname)
         ax2.imshow(img[0:img.shape[1]], cmap='gray')
@@ -1127,5 +1133,45 @@ def show_base_and_neighbors(project, imgs, base_img_idx=None, n_neighbors=5):
         disp(nn_imgs, figsize=(6,2))
     
     
+def time_eval(project):
+    
+    import matplotlib.pylab as plt
+    
+    fname = os.path.join("projects", project, "log/time.txt")
+    
+    with open(fname, "r") as f:
+        lines = f.readlines()
+        
+    lines = [l for l in lines if l.split()[0] != 'tmp']
+    
+    t_dict = {}
+    s_dict = {}
+    for l in lines:
+        s_dict[l.split()[0]] = 0
+        t_dict[l.split()[0]] = 0
+        
+    for l in lines:
+        s_dict[l.split()[0]] += 1
+        t_dict[l.split()[0]] += float(l.split()[1])
+    
+        
+    t_list = []
+    labels = []
+    total = 0
+    for key in s_dict:
+        t_dict[key] = t_dict[key] / s_dict[key]
+        t_list.append(t_dict[key])
+        total += t_dict[key]
+        labels.append(key)
+            
+    # Data to plot
+    colors = range(len(t_list))
+
+    # Plot
+    plt.pie(t_list, labels=labels, 
+            autopct=lambda(p): str(np.round(p * total / 100, 2)) + ' sec')
+
+    plt.axis('equal')
+    plt.show()
     
     

@@ -22,6 +22,7 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics.pairwise import pairwise_distances
 from multiprocessing import Process, Queue
 import ld_gan
+from ld_gan.utils.log_time import log_time
 
 def precomputing_iterator(iterator, maxsize = 5):
     
@@ -302,19 +303,23 @@ def nn_sampler_life(enc,
     
     while True:
         
+        log_time("get_z_enc")
         if nn_subset_size is None:
             imgs = X
         else:
             rand_idxs = np.random.randint(0, len(X), nn_subset_size)
             imgs = X[rand_idxs]
         z_enc = ld_gan.utils.model_handler.apply_model(enc, imgs, batch_size = 1000)
+        log_time("get_z_enc")
         
         batch_idxs = np.random.randint(0, len(z_enc), batch_size)
         
         # dists, idxs = NearestNeighbors(n_neighbors=n_neighbors,
         #                     n_jobs=n_jobs).fit(z_enc).kneighbors(z_enc[batch_idxs])
+        log_time("find_nn")
         dists = pairwise_distances(z_enc, z_enc[batch_idxs], n_jobs=n_jobs)
         idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
+        log_time("find_nn")
 
         # get z_batch
         batch_z_all = z_enc[idxs]
