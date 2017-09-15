@@ -1,4 +1,4 @@
-
+import os
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -9,6 +9,7 @@ from ld_gan.data_proc.transformer import np_to_tensor, tensor_to_np
 import torch.nn.functional as F
 from sklearn.utils import shuffle
 from sklearn.metrics.pairwise import pairwise_distances
+import __main__ as main
 
 
     
@@ -48,8 +49,23 @@ class TripletEnc:
         
         self.opt_enc = optim.Adam(self.tnet.parameters(), lr=lr)
         
-    
+        self.log_fname = os.path.join("projects", 
+                                      main.__file__, 
+                                      "log", 
+                                      "dis_score.txt")
+        
+        
+    def _init_log(self):
+        header = "pos neg min max"
+        with open(self.log_fname, 'w') as f:
+            f.write(header)
+            
+            
     def train(self, X, Y, Z, Z_bar):
+        
+        # init log
+        if os.path.isfile(self.log_fname) == False:
+            self._init_log()
 
         # prepare data
         if self.n_anchors is None:
@@ -67,7 +83,8 @@ class TripletEnc:
                                               n_neg = self.n_neg,
                                               quantile_pos = self.quantile_pos, 
                                               quantile_neg = self.quantile_pos,
-                                              mode = self.mode)
+                                              mode = self.mode,
+                                              log_fname = self.log_fname)
 
         anchors, pos, neg = np_to_tensor(anchors, pos, neg)
         
@@ -121,7 +138,8 @@ def generate_triplets(enc,
                       n_pos = 10, 
                       n_neg = 10, 
                       quantile_pos=0.05, 
-                      quantile_neg=0.3):
+                      quantile_neg=0.3,
+                      log_fname=None):
     
     #######################################
     # 1. prepare z vectors
@@ -148,6 +166,7 @@ def generate_triplets(enc,
                                                   n_neg=n_neg, 
                                                   quantile_pos=quantile_pos, 
                                                   quantile_neg=quantile_neg)
+    
     idxs = np.concatenate([idxs_pos, idxs_neg], 1)
     candidates = z_all[idxs]
     x_candidates = x_all[idxs]
@@ -171,7 +190,19 @@ def generate_triplets(enc,
     
     ds = apply_models(zs, 3000, gen, dis)
     ds = ds.reshape(ds_shape)
-
+    
+    # write log
+    if log_fname is not None:
+        ds_pos_mean = ds[:,:,:idxs_pos.shape[1]].mean()
+        ds_neg_mean = ds[:,:,idxs_pos.shape[1]:].mean()
+        ds_min = np.min(ds, axis=0).mean()
+        ds_max = np.max(ds, axis=0).mean()
+        line = str(ds_pos_mean) + ' ' + \
+               str(ds_neg_mean) + ' ' + \
+               str(ds_min) + ' ' + \
+               str(ds_max)
+        with open(log_fname, 'a') as f:
+            f.write("\n" + line)
     
     #######################################
     # 3. pos / neg sample for each anchor
@@ -225,36 +256,4 @@ def get_enc_space_suggestion(z_anc,
     return idxs_pos, idxs_neg
 
 
-
-def get_dis_score_from_z(z_anc, z_can, gen, dis, n_interpol=7, mode='min'):
-    
-    n_features = z_anc.shape[1]
-    n_candidates = len(z_can)
-    zs_shape   = (n_interpol, n_candidates, n_features)
-    ds_shape   = (n_interpol, n_candidates)
-    
-    z_anc = np.tile(z_anc, (n_candidates, 1))
-    zs = np.zeros(zs_shape)
-    for i in range(n_interpol):
-        f1 = i/float(n_interpol-1)
-        f2 = 1 - i/float(n_interpol-1)
-        zs[i] = f1*z_anc + f2*z_can
-    
-    zs = zs.reshape(-1, n_features)
-    
-    ds = apply_models(zs, 500, gen, dis)
-    ds = ds.reshape(ds_shape)
-    
-    #return ds
-    
-    if mode == 'min':
-        ds = np.min(ds, axis=1)
-    elif mode == 'mean':
-        ds = np.mean(ds, axis=1)
-    
-    return ds
-
-    
-def get_dis_score_from_x(x_anc, x_candidates, enc, gen, dis):
-    pass
 

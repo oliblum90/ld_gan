@@ -19,6 +19,7 @@ import sklearn.preprocessing
 import scipy
 from sklearn.neighbors.kde import KernelDensity
 from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics.pairwise import pairwise_distances
 from multiprocessing import Process, Queue
 import ld_gan
 
@@ -290,6 +291,7 @@ def nn_sampler(z_enc, imgs, y, batch_size, n_neighbors = 5, n_jobs = 10):
         
 # 10 life
 import torch.nn.functional as F
+from ld_gan.utils.log_time import log_time
 def nn_sampler_life(enc, 
                     X, 
                     y, 
@@ -309,8 +311,10 @@ def nn_sampler_life(enc,
         
         batch_idxs = np.random.randint(0, len(z_enc), batch_size)
         
-        dists, idxs = NearestNeighbors(n_neighbors=n_neighbors,
-                            n_jobs=n_jobs).fit(z_enc).kneighbors(z_enc[batch_idxs])
+        # dists, idxs = NearestNeighbors(n_neighbors=n_neighbors,
+        #                     n_jobs=n_jobs).fit(z_enc).kneighbors(z_enc[batch_idxs])
+        dists = pairwise_distances(z_enc, z_enc[batch_idxs], n_jobs=n_jobs)
+        idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
 
         # get z_batch
         batch_z_all = z_enc[idxs]

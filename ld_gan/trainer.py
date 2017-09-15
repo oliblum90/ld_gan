@@ -7,7 +7,7 @@ import ld_gan
 import visualize
 from data_proc.transformer import np_to_tensor, tensor_to_np
 from utils.init_project import init_project, save_setup
-
+from ld_gan.utils.log_time import log_time
 
 class Trainer:
     
@@ -25,7 +25,6 @@ class Trainer:
                  gen_img_step      = 5,
                  gen_tsne_step     = 10,
                  save_model_step   = 50,
-                 trainable_enc     = False,
                  bs_tsne_pts       = None,
                  callbacks         = []):
         
@@ -46,7 +45,6 @@ class Trainer:
         self.sampler          = sampler
         self.train_ops        = train_ops
         self.callbacks        = callbacks
-        self.trainable_enc    = trainable_enc
         
         self._gen_img_step    = gen_img_step
         self._gen_tsne_step   = gen_tsne_step
@@ -75,10 +73,6 @@ class Trainer:
                    np.array([self.batch_size]))
         np.savetxt(os.path.join(self._path_log, "n_samples"), 
                    np.array([self.n_samples]))
-        
-        # save hist / t-sne
-        if trainable_enc == False:
-            self.save_tsne_hist(fname = "0")
         
         # save models
         torch.save(self.gen, os.path.join(self._path_model, "gen.pth"))
@@ -115,9 +109,8 @@ class Trainer:
         fname = os.path.join(path, "d_" + epoch_str + ".pth")
         torch.save(self.dis, fname)
         
-        if self.trainable_enc:
-            fname = os.path.join(path, "e_" + epoch_str + ".pth")
-            torch.save(self.enc, fname)
+        fname = os.path.join(path, "e_" + epoch_str + ".pth")
+        torch.save(self.enc, fname)
             
 
     def generate_imgs(self, fname = None):
@@ -126,17 +119,20 @@ class Trainer:
         
         X, Y, Z, Z_bar = self.sampler.next()
         
-        if self.trainable_enc:
-            Z = self.enc(np_to_tensor(X))
-        else:
-            Z = np_to_tensor(Z)
+        Z_exact = self.enc(np_to_tensor(X))
+        Z = np_to_tensor(Z)
             
         x = self.gen(Z)
+        x_exact = self.gen(Z_exact)
         x = tensor_to_np(x)
+        x_exact = tensor_to_np(x_exact)
         
         if fname is not None:
             
             fname_fake = os.path.join(self._path_gen_img, fname + "_fake.png")
+            visualize.save_g_imgs(fname_fake, x_exact)
+            
+            fname_fake = os.path.join(self._path_gen_img, fname + "_mean_fake.png")
             visualize.save_g_imgs(fname_fake, x)
             
             fname_real = os.path.join(self._path_gen_img, fname + "_real.png")
@@ -159,11 +155,7 @@ class Trainer:
             imgs.append(X)
         X = np.concatenate(imgs)[:n_f_vecs]
         Z = np.concatenate(f_vecs)[:n_f_vecs]
-
-        if self.trainable_enc:
-            Z = ld_gan.utils.model_handler.apply_model(self.enc, 
-                                                       X, 
-                                                       self.bs_tsne_pts)
+        Z = ld_gan.utils.model_handler.apply_model(self.enc, X, self.bs_tsne_pts)
             
         fname = os.path.join(self._path_hist_tsne, fname + "_hist_tsne.png")
         visualize.plot_hist_and_tsne(Z, 
@@ -197,10 +189,14 @@ class Trainer:
                         
             for iteration in tqdm(range(self.iters_per_epoch)):
                 
+                log_time("sample")
                 X, Y, Z, Z_bar = self.sampler.next()
                 X, Y, Z, Z_bar = np_to_tensor(X, Y, Z, Z_bar)
+                log_time("sample")
                 
+                log_time("train")
                 losses = [op.train(X, Y, Z, Z_bar) for op in self.train_ops]
+                log_time("train")
             
                 self._write_log(losses)
             
@@ -216,9 +212,8 @@ class Trainer:
                 self.generate_imgs(fname = e_str)
             
             # save tsne and hist
-            if self.trainable_enc:
-                if epoch % self._gen_tsne_step == 0:
-                    self.save_tsne_hist(fname = e_str)
+            if epoch % self._gen_tsne_step == 0:
+                self.save_tsne_hist(fname = e_str)
 
             # save model
             if epoch % self._save_model_step == 0:
