@@ -7,7 +7,9 @@ import numpy as np
     
 class AutoEncGen:
     
-    def __init__(self, gen, lr):
+    def __init__(self, gen, lr, freq=1):
+        
+        self.freq = freq
         
         self.criterion = nn.MSELoss()
         # self.criterion.size_average = False

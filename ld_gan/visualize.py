@@ -312,7 +312,12 @@ def learning_curve_ia(project,
     logs = np.loadtxt(fname, skiprows=1, delimiter=" ")
     labels = np.genfromtxt(fname, dtype='str')
     labels = labels[0] if labels.ndim > 1 else labels
-    colors = ['g', 'b', 'r', 'gold', 'k', 'magenta'][:len(labels)]
+    colors = ['g', 'b', 'r', 'gold', 'k', 'magenta', 'lime', 'cyan'][:len(labels)]
+    
+    for i in range(10):
+        for i1 in range(logs.shape[0]):
+            for i2 in range(logs.shape[1]):
+                logs[i1, i2] = logs[i1, i2] if logs[i1, i2]!=-1000 else logs[i1, i2-1]
 
     x = np.arange(logs.shape[0]) / iters_per_epoch
     xc = np.arange(smooth/2, logs.shape[0] - smooth/2 + 1) / iters_per_epoch

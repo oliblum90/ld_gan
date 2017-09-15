@@ -15,7 +15,9 @@ def zeros(bs):
     
 class GanDisFar:
     
-    def __init__(self, enc, gen, dis, lr, imgs, batch_size = None):
+    def __init__(self, enc, gen, dis, lr, imgs, batch_size = None, freq=1):
+        
+        self.freq = freq
         
         self.criterion = nn.BCELoss()
         self.criterion.cuda()

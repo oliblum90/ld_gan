@@ -13,7 +13,9 @@ def zeros(bs):
     
 class GanEnc:
     
-    def __init__(self, enc, gen, dis, lr):
+    def __init__(self, enc, gen, dis, lr, freq=1):
+        
+        self.freq = freq
         
         self.criterion = nn.BCELoss()
         self.criterion.cuda()

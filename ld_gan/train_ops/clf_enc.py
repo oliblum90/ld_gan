@@ -47,7 +47,10 @@ class Clf:
                  n_features, 
                  n_classes, 
                  multi_label = False,
-                 write_log=True):
+                 write_log=True, 
+                 freq=1):
+        
+        self.freq = freq
         
         if multi_label:
             self.criterion = nn.BCELoss()
@@ -90,6 +93,7 @@ class Clf:
             err = 0
             for sy, SY in zip(y.split(1), Y.split(1)):
                 err += self.criterion(sy, SY)
+            err = err / y.size(1)
         else:
             err = self.criterion(y, Y)
             

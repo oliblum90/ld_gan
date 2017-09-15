@@ -27,7 +27,10 @@ class TripletEnc:
                  quantile_pos = 0.05,
                  quantile_neg = 0.3,
                  n_anchors = None,
-                 mode = 'min'):
+                 mode = 'min', 
+                 freq=1):
+        
+        self.freq = freq
         
         self.criterion = nn.TripletMarginLoss(margin=0.2, p=2)
         self.criterion.cuda()
@@ -56,7 +59,7 @@ class TripletEnc:
         
         
     def _init_log(self):
-        header = "pos neg min max"
+        header = "pos neg min max best_in_pos"
         with open(self.log_fname, 'w') as f:
             f.write(header)
             
@@ -147,8 +150,8 @@ def generate_triplets(enc,
     
     # map images to latent space
     x_all = imgs.copy()
-    z_all = apply_models(x_all, None, enc)
-    anchors = apply_models(anchors_x, None, enc)
+    z_all = apply_models(x_all, 1000, enc)
+    anchors = apply_models(anchors_x, 1000, enc)
     
     n_ancs     = anchors.shape[0]
     n_features = anchors.shape[1]
@@ -188,7 +191,7 @@ def generate_triplets(enc,
     # 2. get d-score for z vectors
     #######################################
     
-    ds = apply_models(zs, 3000, gen, dis)
+    ds = apply_models(zs, 1000, gen, dis)
     ds = ds.reshape(ds_shape)
     
     # write log
@@ -197,10 +200,14 @@ def generate_triplets(enc,
         ds_neg_mean = ds[:,:,idxs_pos.shape[1]:].mean()
         ds_min = np.min(ds, axis=0).mean()
         ds_max = np.max(ds, axis=0).mean()
+        ds_argmin = np.argmin(ds, axis=0)
+        best_in_pos = ds_argmin <= idxs_pos.shape[1]
+        best_in_pos = best_in_pos.astype(np.float).mean()
         line = str(ds_pos_mean) + ' ' + \
                str(ds_neg_mean) + ' ' + \
                str(ds_min) + ' ' + \
-               str(ds_max)
+               str(ds_max) + ' ' + \
+               str(best_in_pos)
         with open(log_fname, 'a') as f:
             f.write("\n" + line)
     

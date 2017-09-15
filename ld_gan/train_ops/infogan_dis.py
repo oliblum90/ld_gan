@@ -13,7 +13,9 @@ def zeros(bs):
     
 class InfoDis:
     
-    def __init__(self, gen, dis, lr):
+    def __init__(self, gen, dis, lr, freq=1):
+        
+        self.freq = freq
         
         self.criterion = nn.BCELoss()
         self.criterion.cuda()

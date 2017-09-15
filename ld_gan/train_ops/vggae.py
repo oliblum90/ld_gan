@@ -8,7 +8,9 @@ import os
     
 class VGGAutoEnc:
     
-    def __init__(self, vgg, enc, gen, lr, write_log=True):
+    def __init__(self, vgg, enc, gen, lr, write_log=True, freq=1):
+        
+        self.freq = freq
         
         self.criterion = nn.L1Loss()
         # self.criterion.size_average = False

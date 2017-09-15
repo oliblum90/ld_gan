@@ -8,6 +8,7 @@ import visualize
 from data_proc.transformer import np_to_tensor, tensor_to_np
 from utils.init_project import init_project, save_setup
 from ld_gan.utils.log_time import log_time
+from ld_gan.utils.logging import remove_nans
 
 class Trainer:
     
@@ -167,6 +168,7 @@ class Trainer:
         
     def _show_training_status(self, epoch):
         
+        self.epoch_losses = remove_nans(self.epoch_losses)
         losses = np.mean(np.array(self.epoch_losses), axis = 0)
         self.epoch_losses = []
         names = [to.__class__.__name__ for to in self.train_ops]
@@ -187,15 +189,14 @@ class Trainer:
             
             e_str = str(epoch).zfill(4)
                         
-            for iteration in tqdm(range(self.iters_per_epoch)):
+            for it in tqdm(range(self.iters_per_epoch)):
                 
-                log_time("sample")
                 X, Y, Z, Z_bar = self.sampler.next()
                 X, Y, Z, Z_bar = np_to_tensor(X, Y, Z, Z_bar)
-                log_time("sample")
                 
                 log_time("train")
-                losses = [op.train(X, Y, Z, Z_bar) for op in self.train_ops]
+                losses = [op.train(X, Y, Z, Z_bar) if it % op.freq == 0 else -1000
+                          for op in self.train_ops]
                 log_time("train")
             
                 self._write_log(losses)
