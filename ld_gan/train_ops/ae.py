@@ -29,7 +29,6 @@ class AutoEnc:
         ############################
         # (1) Update enc
         ###########################
-        # train with real
         self.gen.zero_grad()
         self.enc.zero_grad()
         z = self.enc(X)

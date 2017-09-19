@@ -180,12 +180,11 @@ def generate_triplets(enc,
             z_anc = anchors[i2]
             z_can = candidates[i2]
             z_anc = np.tile(z_anc, (n_candidates, 1))
-            f1 = i1/float(n_interpol-1)
-            f2 = 1 - i1/float(n_interpol-1)
+            f1 = (i1+1)/float(n_interpol+1)
+            f2 = 1 - f1
             zs[i1, i2] = f1*z_anc + f2*z_can
-            
+    
     zs = zs.reshape(-1, n_features)
-            
     
     #######################################
     # 2. get d-score for z vectors
@@ -193,23 +192,6 @@ def generate_triplets(enc,
     
     ds = apply_models(zs, 1000, gen, dis)
     ds = ds.reshape(ds_shape)
-    
-    # write log
-    if log_fname is not None:
-        ds_pos_mean = ds[:,:,:idxs_pos.shape[1]].mean()
-        ds_neg_mean = ds[:,:,idxs_pos.shape[1]:].mean()
-        ds_min = np.min(ds, axis=0).mean()
-        ds_max = np.max(ds, axis=0).mean()
-        ds_argmin = np.argmin(ds, axis=0)
-        best_in_pos = ds_argmin <= idxs_pos.shape[1]
-        best_in_pos = best_in_pos.astype(np.float).mean()
-        line = str(ds_pos_mean) + ' ' + \
-               str(ds_neg_mean) + ' ' + \
-               str(ds_min) + ' ' + \
-               str(ds_max) + ' ' + \
-               str(best_in_pos)
-        with open(log_fname, 'a') as f:
-            f.write("\n" + line)
     
     #######################################
     # 3. pos / neg sample for each anchor
@@ -219,19 +201,31 @@ def generate_triplets(enc,
         ds = np.min(ds, axis=0)
     elif mode == 'mean':
         ds = np.mean(ds, axis=0)
+  
+    # write log
+    if log_fname is not None:
+        ds_pos_mean = ds[:,:idxs_pos.shape[1]].mean()
+        ds_neg_mean = ds[:,idxs_pos.shape[1]:].mean()
+        ds_min = np.min(ds, axis=1).mean()
+        ds_max = np.max(ds, axis=1).mean()
+        ds_argmax = np.argmax(ds, axis=1)
+        best_in_pos = ds_argmax <= idxs_pos.shape[1]
+        best_in_pos = best_in_pos.astype(np.float).mean()
+        line = str(ds_pos_mean) + ' ' + \
+               str(ds_neg_mean) + ' ' + \
+               str(ds_min) + ' ' + \
+               str(ds_max) + ' ' + \
+               str(best_in_pos)
+        with open(log_fname, 'a') as f:
+            f.write("\n" + line)
     
     idxs_pos = np.argmax(ds, axis=1)
     idxs_neg = np.argmin(ds, axis=1)
-    
-    #zs_pos = np.array([c[i] for c, i in zip(candidates, idxs_pos)])
-    #zs_neg = np.array([c[i] for c, i in zip(candidates, idxs_neg)])
        
     xs_pos = np.array([c[i] for c, i in zip(x_candidates, idxs_pos)])
     xs_neg = np.array([c[i] for c, i in zip(x_candidates, idxs_neg)])
         
     return anchors_x, xs_pos, xs_neg
-
-
 
 
 def get_enc_space_suggestion(z_anc, 

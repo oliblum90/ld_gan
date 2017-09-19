@@ -336,6 +336,7 @@ def nn_sampler_life(enc,
         yield img_batch, y_batch, z_batch, z_batch
         
         
+        
 def find_ideal_kde_sampling_bandwidth(ipt, 
                                       project = None, 
                                       enc_epoch = None, 

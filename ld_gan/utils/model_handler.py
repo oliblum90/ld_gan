@@ -1,3 +1,4 @@
+import ld_gan
 from ld_gan.data_proc.transformer import np_to_tensor, tensor_to_np
 import torch
 import numpy as np
@@ -18,6 +19,30 @@ def load_model(project, epoch, model_name, test_mode = True):
     print "loaded model '{}'".format(fname)
         
     return model
+
+
+def load_parallel_model(project, epoch, model_name):
+    
+    temp = load_model(project, epoch, model_name)
+    
+    if model_name == "enc":
+        model = ld_gan.models.enc.Enc(n_features = 256)
+    elif model_name == "gen":
+        model = ld_gan.models.gen.Gen(latent_size = 256)
+    elif model_name == "dis":
+        model = ld_gan.models.dis.Dis()
+    
+    sd = temp.state_dict()
+    
+    for key in sd.keys():
+        sd[key[7:]] = sd.pop(key)
+        
+    model.load_state_dict(sd)
+    model.cuda()
+    
+    return model
+    
+
 
 
 def apply_model(model, data, batch_size = None, cpu = False):

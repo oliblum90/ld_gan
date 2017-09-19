@@ -10,6 +10,8 @@ from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
 from data_proc.transformer import np_to_tensor, tensor_to_np
 import ld_gan
+import datetime
+import time
 
 
 
@@ -314,10 +316,13 @@ def learning_curve_ia(project,
     labels = labels[0] if labels.ndim > 1 else labels
     colors = ['g', 'b', 'r', 'gold', 'k', 'magenta', 'lime', 'cyan'][:len(labels)]
     
-    for i in range(10):
-        for i1 in range(logs.shape[0]):
-            for i2 in range(logs.shape[1]):
-                logs[i1, i2] = logs[i1, i2] if logs[i1, i2]!=-1000 else logs[i1, i2-1]
+    try:
+        for i in range(10):
+            for i1 in range(logs.shape[0]):
+                for i2 in range(logs.shape[1]):
+                    logs[i1, i2] = logs[i1, i2] if logs[i1, i2]!=-1000 else logs[i1, i2-1]
+    except:
+        pass
 
     x = np.arange(logs.shape[0]) / iters_per_epoch
     xc = np.arange(smooth/2, logs.shape[0] - smooth/2 + 1) / iters_per_epoch
@@ -572,13 +577,19 @@ def tsne_real_fake_vis(imgs_real,
                        n_pts_tsne = 4000,
                        n_neighbors = 5,
                        alpha = 0.003,
-                       real_img_mode = "single"):
+                       real_img_mode = "single",
+                       is_parallel_model = False,
+                       reload_tsne       = False):
     
     import matplotlib.pylab as plt
     
     # load models
-    enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
-    gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+    if is_parallel_model:
+        enc = ld_gan.utils.model_handler.load_parallel_model(project, epoch, "enc")
+        gen = ld_gan.utils.model_handler.load_parallel_model(project, epoch, "gen")
+    else:
+        enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+        gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
     
     if z_mapped is None:
         epoch_str = str(epoch).zfill(4)
@@ -586,11 +597,15 @@ def tsne_real_fake_vis(imgs_real,
                           + epoch_str + "_" + str(n_pts_tsne) + ".npy"
         
         try:
+            if reload_tsne:
+                jjj
             z_mapped = np.load(fname)
         
         except:
             print "compute tsne..."
-            f_X = ld_gan.utils.model_handler.apply_model(enc, imgs_real[:n_pts_tsne])
+            f_X = ld_gan.utils.model_handler.apply_model(enc, 
+                                                         imgs_real[:n_pts_tsne],
+                                                         1000)
             tsne = TSNE(n_components=2, 
                         random_state=0, 
                         metric = 'cosine', 
@@ -660,6 +675,7 @@ def tsne_real_fake_vis(imgs_real,
         for idx in idxs[0]:
             z_enc = ld_gan.utils.model_handler.apply_model(enc, np.array([imgs_real[idx]]))
             z_encs.append(z_enc)
+        #z_enc = np.mean(np.array(z_encs), axis = 0)
         z_enc = np.mean(np.array(z_encs), axis = 0)
         
         if sampler is not None:
@@ -1173,10 +1189,80 @@ def time_eval(project):
     colors = range(len(t_list))
 
     # Plot
+    plt.figure(figsize=(6,3), dpi=180)
+    
+    plt.subplot(1,2,1)
     plt.pie(t_list, labels=labels, 
             autopct=lambda(p): str(np.round(p * total / 100, 2)) + ' sec')
 
     plt.axis('equal')
+    
+    with open(fname, "r") as f:
+        lines = f.readlines()
+    
+    # time seq
+    freq = 0
+    keys = []
+    for l in lines:
+        key = l.split()[0]
+        if key == 'tmp':
+            continue
+        key = l.split()[0]
+        if key not in keys:
+            freq += 1
+        else:
+            break
+        keys.append(key)
+        
+    ts = [float(t[4:-1]) for t in lines[::freq*2]]
+    t_abs = [ts[i+1]-ts[i] for i in range(len(ts)-1)]
+    t_clk = [datetime.datetime.fromtimestamp(t) for t in ts[:-1]]
+    
+    ax = plt.subplot(1,2,2)
+    ax.plot(t_clk, t_abs, c='r', alpha = 0.2)
+    mean_t_abs = np.convolve(t_abs, np.ones((50,))/50)
+    ax.plot(t_clk, mean_t_abs[:len(t_clk)], c='r')
+    for tick in ax.get_xticklabels():
+        tick.set_rotation(45)
+        
+    plt.tight_layout()
     plt.show()
     
     
+def gpu(max_last_mod=120, lj=30):
+    
+    print "name".ljust(lj), "host".ljust(lj), "epoch"
+    print "--------------------------------------------------------------------"
+    
+    n_projects_running = 0
+    for p in os.listdir("projects"):
+        fname = os.path.join("projects", p, "log/logs.txt")
+        t = time.time() - os.path.getmtime(fname)
+        #print p.ljust(35), t
+        if  t < max_last_mod:
+            
+            # process name
+            print p.ljust(lj),
+            
+            # host name
+            fname = os.path.join("projects", p, "log/host_name.txt")
+            if os.path.isfile(fname):
+                with open(fname, 'r') as f:
+                    host_name = f.read()
+            else:
+                host_name = "-"
+            print host_name.ljust(lj),
+            
+            # epoch
+            fname = "projects/" + p + "/log/iters_per_epoch"
+            iters_per_epoch = float(np.loadtxt(fname))
+            fname = os.path.join("projects/", p, 'log/logs.txt')
+            n_iters = len(np.loadtxt(fname, skiprows=1, delimiter=" "))
+            epoch = n_iters / float(iters_per_epoch)
+            print np.round(epoch, 2),
+            
+            print " "
+            n_projects_running += 1
+    print "--------------------------------------------------------------------"
+    print "\n"
+    print "{} projects running".format(n_projects_running)

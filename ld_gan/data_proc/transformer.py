@@ -29,7 +29,7 @@ def np_to_tensor(*args):
     
 
 def tensor_to_np(t):
-        
+    
     try:
         arr = (t.data).cpu().numpy()
     except:

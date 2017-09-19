@@ -8,7 +8,7 @@ import visualize
 from data_proc.transformer import np_to_tensor, tensor_to_np
 from utils.init_project import init_project, save_setup
 from ld_gan.utils.log_time import log_time
-from ld_gan.utils.logging import remove_nans
+from ld_gan.utils.logging import remove_nans, log_host_name
 
 class Trainer:
     
@@ -74,6 +74,7 @@ class Trainer:
                    np.array([self.batch_size]))
         np.savetxt(os.path.join(self._path_log, "n_samples"), 
                    np.array([self.n_samples]))
+        log_host_name(self._path_log)
         
         # save models
         torch.save(self.gen, os.path.join(self._path_model, "gen.pth"))
