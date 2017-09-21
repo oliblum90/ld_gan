@@ -7,7 +7,7 @@ import numpy as np
     
 class AutoEncGen:
     
-    def __init__(self, gen, lr, freq=1):
+    def __init__(self, enc, gen, lr, freq=1):
         
         self.freq = freq
         
@@ -16,6 +16,7 @@ class AutoEncGen:
         self.criterion.cuda()
         
         self.gen = gen
+        self.enc = enc
         
         self.opt_gen = optim.Adam(self.gen.parameters(), lr=lr)
         
@@ -29,7 +30,8 @@ class AutoEncGen:
         ###########################
         # train with real
         self.gen.zero_grad()
-        x = self.gen(Z)
+        z = self.enc(X)
+        x = self.gen(z.detach())
         err = self.criterion(x, X)
         err.backward()
         mean_x = x.data.mean()

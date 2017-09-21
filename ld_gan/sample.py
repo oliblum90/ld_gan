@@ -309,7 +309,7 @@ def nn_sampler_life(enc,
         else:
             rand_idxs = np.random.randint(0, len(X), nn_subset_size)
             imgs = X[rand_idxs]
-        z_enc = ld_gan.utils.model_handler.apply_model(enc, imgs, batch_size = 1000)
+        z_enc = ld_gan.utils.model_handler.apply_model(enc, imgs, batch_size = 500)
         log_time("get_z_enc")
         
         batch_idxs = np.random.randint(0, len(z_enc), batch_size)

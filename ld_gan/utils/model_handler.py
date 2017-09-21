@@ -21,7 +21,7 @@ def load_model(project, epoch, model_name, test_mode = True):
     return model
 
 
-def load_parallel_model(project, epoch, model_name):
+def load_parallel_model(project, epoch, model_name, test_mode = True):
     
     temp = load_model(project, epoch, model_name)
     
@@ -39,6 +39,9 @@ def load_parallel_model(project, epoch, model_name):
         
     model.load_state_dict(sd)
     model.cuda()
+    
+    if test_mode:
+        model.eval()
     
     return model
     

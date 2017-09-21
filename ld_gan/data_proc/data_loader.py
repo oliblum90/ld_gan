@@ -10,6 +10,7 @@ from multiprocessing import Pool
 PATH_MNIST   = "/export/home/oblum/projects/ls_gan/data/mnist/jpg_32"
 PATH_FLOWER  = "/export/home/oblum/projects/ls_gan/data/flowers_102/jpg_128"
 PATH_CELEBA  = "/export/home/oblum/projects/ls_gan/data/celebA/jpg_64"
+PATH_CELEBA_128 = "/export/home/oblum/projects/ls_gan/data/celebA/jpg_128/faces"
 PATH_FLOWER_17 = "/export/home/oblum/projects/ls_gan/data/flowers_17/jpg_64"
 
 
@@ -73,7 +74,8 @@ def load_imgs(path):
 
 
 def _load_single_celeba(lab_vec):
-    path = '/export/home/oblum/projects/ls_gan/data/celebA/jpg_64/'
+    #path = '/export/home/oblum/projects/ls_gan/data/celebA/jpg_64/'
+    path = PATH_CELEBA_128
     path = os.path.join(path, lab_vec[0])
     img = scipy.misc.imread(path)
     lab_vec = np.array(lab_vec[1:]).astype('int')

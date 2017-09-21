@@ -633,6 +633,14 @@ def tsne_real_fake_vis(imgs_real,
     ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = y[:len(z_mapped)], 
                 s = 10, alpha = alpha, edgecolors='none')
     
+    
+    dists, idxs = nbrs.kneighbors(np.array([[0, 0]]))
+    imgs = imgs_real[idxs[0]]
+    z_enc = ld_gan.utils.model_handler.apply_model(enc, np.array([imgs_real[idxs[0]]]))
+    
+    
+    
+    
     def onclick(event):
         dists, idxs = nbrs.kneighbors(np.array([[event.xdata, event.ydata]]))
         idx = idxs[0][0]
@@ -671,12 +679,8 @@ def tsne_real_fake_vis(imgs_real,
             img_real = np.squeeze(imgs_real[idx])
             ax2.imshow(img_real, cmap='gray')
 
-        z_encs = []
-        for idx in idxs[0]:
-            z_enc = ld_gan.utils.model_handler.apply_model(enc, np.array([imgs_real[idx]]))
-            z_encs.append(z_enc)
-        #z_enc = np.mean(np.array(z_encs), axis = 0)
-        z_enc = np.mean(np.array(z_encs), axis = 0)
+        z_enc = ld_gan.utils.model_handler.apply_model(enc,np.array([imgs_real[idxs[0]]]))
+        z_enc = np.mean(np.array(z_enc), axis = 0)
         
         if sampler is not None:
             z_enc = sampler(z_enc)
@@ -711,13 +715,19 @@ def tsne_to_interpol_arr(imgs_real,
                          n_pts_tsne = 4000,
                          n_neighbors = 5,
                          alpha = 0.003,
-                         real_img_mode = "single"):
+                         real_img_mode = "single",
+                         is_parallel_model = False):
     
     import matplotlib.pylab as plt
     
     # load models
-    enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
-    gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+    if is_parallel_model:
+        enc = ld_gan.utils.model_handler.load_parallel_model(project, epoch, "enc")
+        gen = ld_gan.utils.model_handler.load_parallel_model(project, epoch, "gen")
+    else:
+        enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+        gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+    
     
     if z_mapped is None:
         epoch_str = str(epoch).zfill(4)
@@ -758,6 +768,8 @@ def tsne_to_interpol_arr(imgs_real,
     ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = y[:len(z_mapped)], 
                 s = 10, alpha = alpha, edgecolors='none')
     
+
+    
     def onclick(event):
         dists, idxs = nbrs.kneighbors(np.array([[event.xdata, event.ydata]]))
         idx = idxs[0][0]
@@ -765,10 +777,7 @@ def tsne_to_interpol_arr(imgs_real,
               (event.button, idx, event.y, event.xdata, event.ydata))
                 
         imgs = imgs_real[idxs[0]]
-        z_encs = []
-        for idx in idxs[0]:
-            z_enc = ld_gan.utils.model_handler.apply_model(enc, np.array([imgs_real[idx]]))
-            z_encs.append(z_enc)
+        z_encs = ld_gan.utils.model_handler.apply_model(enc,imgs_real[idxs[0]])
                 
         Z_enc_00 = z_encs[0]
         Z_enc_10 = z_encs[1]
@@ -1235,7 +1244,7 @@ def gpu(max_last_mod=120, lj=30):
     print "--------------------------------------------------------------------"
     
     n_projects_running = 0
-    for p in os.listdir("projects"):
+    for p in sorted(os.listdir("projects")):
         fname = os.path.join("projects", p, "log/logs.txt")
         t = time.time() - os.path.getmtime(fname)
         #print p.ljust(35), t
