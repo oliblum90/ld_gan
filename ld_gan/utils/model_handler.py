@@ -3,7 +3,18 @@ from ld_gan.data_proc.transformer import np_to_tensor, tensor_to_np
 import torch
 import numpy as np
 
+
 def load_model(project, epoch, model_name, test_mode = True):
+        
+    model = _load_model(project, epoch, model_name, test_mode = test_mode)
+        
+    if "DataParallel" in str(model):
+        return load_parallel_model(project, epoch, model_name, test_mode = test_mode)
+    else:
+        return model
+
+    
+def _load_model(project, epoch, model_name, test_mode = True):
         
     epoch_str = str(epoch).zfill(4)
     try:
@@ -23,7 +34,7 @@ def load_model(project, epoch, model_name, test_mode = True):
 
 def load_parallel_model(project, epoch, model_name, test_mode = True):
     
-    temp = load_model(project, epoch, model_name)
+    temp = _load_model(project, epoch, model_name)
     
     if model_name == "enc":
         model = ld_gan.models.enc.Enc(n_features = 256)
@@ -31,7 +42,7 @@ def load_parallel_model(project, epoch, model_name, test_mode = True):
         model = ld_gan.models.gen.Gen(latent_size = 256)
     elif model_name == "dis":
         model = ld_gan.models.dis.Dis()
-    
+            
     sd = temp.state_dict()
     
     for key in sd.keys():

@@ -241,7 +241,7 @@ def get_enc_space_suggestion(z_anc,
     n_pre_neg = int((1.-quantile_neg) * n_all)
         
     # get distances in encoded space
-    dists = pairwise_distances(z_anc, z_all)
+    dists = pairwise_distances(z_anc, z_all, metric='cosine')
     idxs_sorted = np.array([d.argsort() for d in dists])
     
     # get indexes fullfilling quantile constraints

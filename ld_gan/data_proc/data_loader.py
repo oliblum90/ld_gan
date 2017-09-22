@@ -75,7 +75,7 @@ def load_imgs(path):
 
 def _load_single_celeba(lab_vec):
     #path = '/export/home/oblum/projects/ls_gan/data/celebA/jpg_64/'
-    path = PATH_CELEBA_128
+    path = PATH_CELEBA
     path = os.path.join(path, lab_vec[0])
     img = scipy.misc.imread(path)
     lab_vec = np.array(lab_vec[1:]).astype('int')
@@ -93,7 +93,8 @@ def load_celeba(n_jobs=10):
     
     #p = Pool(n_jobs)
     #out = p.map(_load_single_celeba, labels)
-    out = _imap_unordered_bar(_load_single_celeba, labels, n_processes = n_jobs)
+    #out = _imap_unordered_bar(_load_single_celeba, labels, n_processes = n_jobs)
+    out = [_load_single_celeba(l) for l in tqdm(labels)]
     
     x = np.array([o[0] for o in out])
     y = np.array([o[1] for o in out])

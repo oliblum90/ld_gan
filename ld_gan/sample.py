@@ -23,6 +23,8 @@ from sklearn.metrics.pairwise import pairwise_distances
 from multiprocessing import Process, Queue
 import ld_gan
 from ld_gan.utils.log_time import log_time
+from tqdm import tqdm
+from ld_gan.utils.nearest_neighbors import nn_gpu
 
 def precomputing_iterator(iterator, maxsize = 5):
     
@@ -265,10 +267,17 @@ def sample_tsne_features(z_enc,
     
     
 # 10
-def nn_sampler(z_enc, imgs, y, batch_size, n_neighbors = 5, n_jobs = 10):
+def nn_sampler_bar(z_enc, imgs, y, batch_size, n_neighbors = 5):
     
-    dists, idxs = NearestNeighbors(n_neighbors=n_neighbors,
-                                   n_jobs=n_jobs).fit(z_enc).kneighbors(z_enc)
+    n_splits = 200    
+    idx_list = []
+    for ipt in tqdm(np.array_split(z_enc, n_splits)):
+        dists = pairwise_distances(z_enc, 
+                                   ipt, 
+                                   metric='cosine')
+        idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
+        idx_list.append(idxs)
+    idxs = np.concatenate(idxs)
     
     while True:
         
@@ -290,6 +299,7 @@ def nn_sampler(z_enc, imgs, y, batch_size, n_neighbors = 5, n_jobs = 10):
         yield img_batch, y_batch, z_batch, z_batch
 
         
+        
 # 10 life
 import torch.nn.functional as F
 from ld_gan.utils.log_time import log_time
@@ -298,7 +308,6 @@ def nn_sampler_life(enc,
                     y, 
                     batch_size, 
                     n_neighbors = 5, 
-                    n_jobs = 10, 
                     nn_subset_size = None):
     
     while True:
@@ -314,10 +323,10 @@ def nn_sampler_life(enc,
         
         batch_idxs = np.random.randint(0, len(z_enc), batch_size)
         
-        # dists, idxs = NearestNeighbors(n_neighbors=n_neighbors,
-        #                     n_jobs=n_jobs).fit(z_enc).kneighbors(z_enc[batch_idxs])
         log_time("find_nn")
-        dists = pairwise_distances(z_enc, z_enc[batch_idxs], n_jobs=n_jobs)
+        dists = pairwise_distances(z_enc, 
+                                   z_enc[batch_idxs], 
+                                   metric='cosine')
         idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
         log_time("find_nn")
 

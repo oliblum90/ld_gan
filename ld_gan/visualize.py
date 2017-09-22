@@ -8,6 +8,7 @@ from matplotlib import gridspec
 import matplotlib
 from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics.pairwise import pairwise_distances
 from data_proc.transformer import np_to_tensor, tensor_to_np
 import ld_gan
 import datetime
@@ -23,7 +24,7 @@ def out(p):
         m = re.search(r'\bout\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)', line)
         if m:
             print m.group(1), ":\t", p
-
+            
             
 def show_training_status(fname, epoch, d_loss, g_loss, d_test_loss):
     print "EPOCH: {}".format(epoch)
@@ -636,7 +637,7 @@ def tsne_real_fake_vis(imgs_real,
     
     dists, idxs = nbrs.kneighbors(np.array([[0, 0]]))
     imgs = imgs_real[idxs[0]]
-    z_enc = ld_gan.utils.model_handler.apply_model(enc, np.array([imgs_real[idxs[0]]]))
+    z_enc = ld_gan.utils.model_handler.apply_model(enc, imgs_real[idxs[0]])
     
     
     
@@ -679,7 +680,7 @@ def tsne_real_fake_vis(imgs_real,
             img_real = np.squeeze(imgs_real[idx])
             ax2.imshow(img_real, cmap='gray')
 
-        z_enc = ld_gan.utils.model_handler.apply_model(enc,np.array([imgs_real[idxs[0]]]))
+        z_enc = ld_gan.utils.model_handler.apply_model(enc, imgs_real[idxs[0]])
         z_enc = np.mean(np.array(z_enc), axis = 0)
         
         if sampler is not None:
@@ -715,19 +716,14 @@ def tsne_to_interpol_arr(imgs_real,
                          n_pts_tsne = 4000,
                          n_neighbors = 5,
                          alpha = 0.003,
-                         real_img_mode = "single",
-                         is_parallel_model = False):
+                         real_img_mode = "single"):
     
     import matplotlib.pylab as plt
     
-    # load models
-    if is_parallel_model:
-        enc = ld_gan.utils.model_handler.load_parallel_model(project, epoch, "enc")
-        gen = ld_gan.utils.model_handler.load_parallel_model(project, epoch, "gen")
-    else:
-        enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
-        gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+    enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+    gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
     
+    f_X = ld_gan.utils.model_handler.apply_model(enc, imgs_real, 1000)
     
     if z_mapped is None:
         epoch_str = str(epoch).zfill(4)
@@ -739,22 +735,17 @@ def tsne_to_interpol_arr(imgs_real,
         
         except:
             print "compute tsne..."
-            f_X = ld_gan.utils.model_handler.apply_model(enc, imgs_real[:n_pts_tsne])
             tsne = TSNE(n_components=2, 
                         random_state=0, 
                         metric = 'cosine', 
                         learning_rate=1000)
-            z_mapped = tsne.fit_transform(f_X)
+            z_mapped = tsne.fit_transform(f_X[:n_pts_tsne])
             try:
                 os.mkdir("projects/" + project + "/tsne_pts")
             except:
                 pass
             np.save(fname, z_mapped)
                          
-            
-        
-        
-    nbrs = NearestNeighbors(n_neighbors = n_neighbors).fit(z_mapped)
     
     if small:
         fig = plt.figure(figsize = (6.,3.))
@@ -768,14 +759,43 @@ def tsne_to_interpol_arr(imgs_real,
     ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = y[:len(z_mapped)], 
                 s = 10, alpha = alpha, edgecolors='none')
     
-
+    
+    arr_img = None 
+    
+    np.save("/tmp/z_mapped.npy", z_mapped)
+    np.save("/tmp/f_X.npy", f_X)
+    
     
     def onclick(event):
-        dists, idxs = nbrs.kneighbors(np.array([[event.xdata, event.ydata]]))
-        idx = idxs[0][0]
-        print('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
-              (event.button, idx, event.y, event.xdata, event.ydata))
-                
+        
+        global arr_img
+        
+        z_mapped = np.load("/tmp/z_mapped.npy")
+        
+        if (event.xdata > 200) or (event.ydata > 200):
+            path = os.path.join("projects/", 
+                                project,
+                                "_demo_imgs")
+            if os.path.isdir(path) == False:
+                os.mkdir(path)
+            path = os.path.join(path, str(epoch))
+            if os.path.isdir(path) == False:
+                os.mkdir(path)
+            idx = len(os.listdir(path))
+            fname = os.path.join(path, str(idx) + ".png")
+            scipy.misc.imsave(fname, arr_img)
+            ax2.set_title("saved img {}".format(fname))
+            return
+        
+        ax2.set_title("")
+        
+        click_pos = np.array([[event.xdata, event.ydata]])
+        dists = pairwise_distances(click_pos, z_mapped)
+        idx = np.argsort(dists, axis=1)[:, 0]
+        z_pos = f_X[idx]
+        dists = pairwise_distances(z_pos, f_X, metric='cosine')
+        idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
+                         
         imgs = imgs_real[idxs[0]]
         z_encs = ld_gan.utils.model_handler.apply_model(enc,imgs_real[idxs[0]])
                 
@@ -1275,3 +1295,140 @@ def gpu(max_last_mod=120, lj=30):
     print "--------------------------------------------------------------------"
     print "\n"
     print "{} projects running".format(n_projects_running)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+def tiplet_nn(imgs_real, 
+              y, 
+              project, 
+              epoch,
+              sampler = None,
+              n_pts_tsne = 4000,
+              n_neighbors = 5,
+              alpha = 0.3,
+              real_img_mode = "single"):
+    
+    import matplotlib.pylab as plt
+    
+    # load models
+    enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+    gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+    dis = ld_gan.utils.model_handler.load_model(project, epoch, "dis")
+    
+    epoch_str = str(epoch).zfill(4)
+    fname = "projects/" + project + "/tsne_pts/" \
+                      + epoch_str + "_" + str(n_pts_tsne) + ".npy"
+
+    try:
+        z_mapped = np.load(fname)
+
+    except:
+        print "compute tsne..."
+        f_X = ld_gan.utils.model_handler.apply_model(enc, 
+                                                     imgs_real[:n_pts_tsne],
+                                                     1000)
+        tsne = TSNE(n_components=2, 
+                    random_state=0, 
+                    metric = 'cosine', 
+                    learning_rate=1000)
+        z_mapped = tsne.fit_transform(f_X)
+        try:
+            os.mkdir("projects/" + project + "/tsne_pts")
+        except:
+            pass
+        np.save(fname, z_mapped)
+
+    nbrs = NearestNeighbors(n_neighbors = 6).fit(z_mapped)
+    
+    
+    # load fig
+    import matplotlib.gridspec as gridspec
+    fig = plt.figure(figsize = (10.,10.))
+    gs = gridspec.GridSpec(8, 11)
+    ax1 = fig.add_subplot(gs[0:2, 0:3])
+    ax2 = fig.add_subplot(gs[0:2, 3:6])
+    ax3 = fig.add_subplot(gs[0:2, 6:9])
+    ax2.axis('off')
+    ax3.axis('off')
+    axs0, axs1, axs2, axs3, axs4 = [], [], [], [], []
+    for i in range(7):
+        axs0.append(fig.add_subplot(gs[3, i]))
+        axs1.append(fig.add_subplot(gs[4, i]))
+        axs2.append(fig.add_subplot(gs[5, i]))
+        axs3.append(fig.add_subplot(gs[6, i]))
+        axs4.append(fig.add_subplot(gs[7, i]))
+    paxs0 = fig.add_subplot(gs[3, 8:])
+    paxs1 = fig.add_subplot(gs[4, 8:])
+    paxs2 = fig.add_subplot(gs[5, 8:])
+    paxs3 = fig.add_subplot(gs[6, 8:])
+    paxs4 = fig.add_subplot(gs[7, 8:])
+    axs = [axs0, axs1, axs2, axs3, axs4]
+    paxs = [paxs0, paxs1, paxs2, paxs3, paxs4]
+    
+    for a1 in axs:
+        for a2 in a1:
+            a2.axis('off')
+
+    ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = y[:len(z_mapped)], 
+                s = 10, alpha = alpha, edgecolors='none')
+    
+    
+    def onclick(event):
+        
+        dists, idxs = nbrs.kneighbors(np.array([[event.xdata, event.ydata]]))
+        idx = idxs[0][0]
+
+        imgs = imgs_real[idxs[0]]
+
+        for idx, img in enumerate(imgs[1:]):
+            axs[idx][0].imshow(imgs[0])
+            axs[idx][-1].imshow(img)
+            ipt = np.array([imgs[0], img])
+            z0, z1 = ld_gan.utils.model_handler.apply_model(enc, ipt)
+            n_interpol = 5
+            fac0 = [1 - (i+1)/float(n_interpol+1) for i in range(n_interpol)]
+            fac1 = [(i+1)/float(n_interpol+1) for i in range(n_interpol)]
+            zs = [z0*f0 + z1*f1 for f0, f1 in zip(fac0, fac1)]
+            zs = np.array(zs)
+            interpol_imgs = ld_gan.utils.model_handler.apply_model(gen, zs)
+            dss = []
+            for ii_idx, ii in enumerate(interpol_imgs):
+                axs[idx][ii_idx+1].imshow(ii)
+                ds = ld_gan.utils.model_handler.apply_model(dis, np.array([ii]))
+                axs[idx][ii_idx+1].set_title(np.round(ds,3), fontsize=10)
+                dss.append(float(ds))
+            paxs[idx].clear()
+            paxs[idx].plot(range(len(dss)), dss)
+            paxs[idx].set_ylim([0, 0.5])
+            for tick in paxs[idx].xaxis.get_major_ticks():
+                tick.label.set_fontsize(6)
+            for tick in paxs[idx].yaxis.get_major_ticks():
+                tick.label.set_fontsize(6)
+
+    cid = fig.canvas.mpl_connect('button_press_event', onclick)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

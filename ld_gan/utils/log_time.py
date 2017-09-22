@@ -29,6 +29,7 @@ def log_time(name):
         with open(log_fname, "a") as f:
             f.write(line)
     except:
-        print "ERROR in log_time"
+        #print "ERROR in log_time"
+        pass
 
     

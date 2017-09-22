@@ -2,3 +2,4 @@ import init_project
 import model_handler
 import log_time
 import logging
+import nearest_neighbors

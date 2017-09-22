@@ -121,7 +121,7 @@ class InceptionScore:
         
         # get prediction vectors of inception net for images
         preds = []
-        for batch in batches:
+        for batch in tqdm(batches):
             imgs = [Image.fromarray(img) for img in batch]
             imgs = torch.stack([self.preprocess(img) for img in imgs])
             imgs = imgs.cuda()
