@@ -30,10 +30,8 @@ class GanDis:
 
         bs = X.size(0)
 
-        ############################
-        # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
-        ###########################
-        # train with real
+        self.dis.train()
+        
         self.dis.zero_grad()
         d = self.dis(X)
         errD_real = self.criterion(d, ones(bs))
@@ -48,5 +46,7 @@ class GanDis:
         D_G_z1 = d.data.mean()
         errD = errD_real + errD_fake
         self.opt_dis.step()
+        
+        self.dis.eval()
         
         return errD.cpu().data.numpy()[0]

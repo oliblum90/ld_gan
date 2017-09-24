@@ -40,6 +40,9 @@ class VGGAutoEnc:
 
         bs = X.size(0)
 
+        self.enc.train()
+        self.gen.train()
+        
         self.gen.zero_grad()
         self.enc.zero_grad()
         C1, C2, C3, C4, C5 = self.vgg(X)
@@ -57,6 +60,9 @@ class VGGAutoEnc:
         mean_x = x.data.mean()
         self.opt_enc.step()
         self.opt_gen.step()
+        
+        self.enc.eval()
+        self.gen.eval()
 
         # write log
         if self.write_log:

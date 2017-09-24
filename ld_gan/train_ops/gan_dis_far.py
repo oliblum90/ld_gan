@@ -48,7 +48,8 @@ class GanDisFar:
         z = np_to_tensor(z)
         x = np_to_tensor(imgs_1)
         
-        # train with real
+        self.dis.train()
+        
         self.dis.zero_grad()
         d = self.dis(x)
         errD_real = self.criterion(d, ones(self.batch_size))
@@ -63,6 +64,8 @@ class GanDisFar:
         D_G_z1 = d.data.mean()
         errD = errD_real + errD_fake
         self.opt_dis.step()
+        
+        self.dis.eval()
         
         return errD.cpu().data.numpy()[0]
     

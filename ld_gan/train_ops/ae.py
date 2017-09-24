@@ -26,9 +26,9 @@ class AutoEnc:
 
         bs = X.size(0)
 
-        ############################
-        # (1) Update enc
-        ###########################
+        self.enc.train()
+        self.gen.train()
+        
         self.gen.zero_grad()
         self.enc.zero_grad()
         z = self.enc(X)
@@ -38,6 +38,9 @@ class AutoEnc:
         mean_x = x.data.mean()
         self.opt_enc.step()
         self.opt_gen.step()
+        
+        self.enc.eval()
+        self.gen.eval()
         
         return err.cpu().data.numpy()[0]
     

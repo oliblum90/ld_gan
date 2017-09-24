@@ -83,6 +83,9 @@ class Clf:
     
     def train(self, X, Y, Z, Z_bar):
         
+        self.enc.train()
+        self.clf_layer.train()
+        
         self.enc.zero_grad()
         self.clf_layer.zero_grad()
         
@@ -102,6 +105,9 @@ class Clf:
         
         self.opt_enc.step()
         self.opt_clf_layer.step()
+        
+        self.enc.eval()
+        self.clf_layer.eval()
         
         # write log
         if self.write_log and (self.multi_label == False):

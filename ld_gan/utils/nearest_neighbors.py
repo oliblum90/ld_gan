@@ -3,7 +3,6 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-
 def nn_gpu(z_all, z_batch, n_neighbors = 5):
     
     if type(z_all) is np.ndarray:
@@ -16,10 +15,16 @@ def nn_gpu(z_all, z_batch, n_neighbors = 5):
     z_all = F.normalize(z_all, dim=1)
     z_batch = F.normalize(z_batch, dim=1)
     dists = torch.mm(z_batch, z_all.permute(1, 0))
-    _, idxs3 = torch.sort(dists, 1)
-    idxs3 = idxs3[:, -n_neighbors:]
+    _, idxs = torch.sort(dists, 1)
+    
+    if n_neighbors is not None:
+        idxs = idxs[:, -n_neighbors:]
+
+    # reverse idxs
+    inv_idx = torch.arange(idxs.size(0)-1, -1, -1).long().cuda()
+    idxs = idxs[inv_idx]
     
     if type_np:
-        idxs3 = (idxs3.data).cpu().numpy()
+        idxs = (idxs.data).cpu().numpy()
     
-    return idxs3
+    return idxs

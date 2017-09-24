@@ -31,9 +31,8 @@ class GanEnc:
 
         bs = X.size(0)
 
-        ############################
-        # (2) Update G network: maximize log(D(G(z)))
-        ###########################
+        self.enc.train()
+
         self.enc.zero_grad()
         z = self.enc(X)
         x = self.gen(z)
@@ -42,5 +41,7 @@ class GanEnc:
         errE.backward()
         D_G_z2 = d.data.mean()
         self.opt_enc.step()
+        
+        self.enc.eval()
         
         return errE.cpu().data.numpy()[0]

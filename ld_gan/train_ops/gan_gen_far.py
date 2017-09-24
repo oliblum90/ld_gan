@@ -47,7 +47,8 @@ class GanGenFar:
         z = (z1 + z2) / 0.5
         z = np_to_tensor(z)
 
-        # train
+        self.gen.train()
+        
         self.gen.zero_grad()
         x = self.gen(z)
         d = self.dis(x)
@@ -55,6 +56,8 @@ class GanGenFar:
         errG.backward()
         D_G_z2 = d.data.mean()
         self.opt_gen.step()
+        
+        self.gen.eval()
         
         return errG.cpu().data.numpy()[0]
     

@@ -121,13 +121,14 @@ class Trainer:
         
         X, Y, Z, Z_bar = self.sampler.next()
         
-        Z_exact = self.enc(np_to_tensor(X))
-        Z = np_to_tensor(Z)
+        Z_exact = self.enc(X)
             
         x = self.gen(Z)
         x_exact = self.gen(Z_exact)
+        
         x = tensor_to_np(x)
         x_exact = tensor_to_np(x_exact)
+        x_real = tensor_to_np(X)
         
         if fname is not None:
             
@@ -138,7 +139,7 @@ class Trainer:
             visualize.save_g_imgs(fname_fake, x)
             
             fname_real = os.path.join(self._path_gen_img, fname + "_real.png")
-            visualize.save_g_imgs(fname_real, X)
+            visualize.save_g_imgs(fname_real, x_real)
             
         else:
             
@@ -153,8 +154,8 @@ class Trainer:
         f_vecs, imgs = [], []
         for step in range(n_iters):
             X, Y, Z, Z_bar = self.sampler.next()
-            f_vecs.append(Z)
-            imgs.append(X)
+            f_vecs.append(tensor_to_np(Z))
+            imgs.append(tensor_to_np(X))
         X = np.concatenate(imgs)[:n_f_vecs]
         Z = np.concatenate(f_vecs)[:n_f_vecs]
         Z = ld_gan.utils.model_handler.apply_model(self.enc, X, self.bs_tsne_pts)
@@ -193,7 +194,6 @@ class Trainer:
             for it in tqdm(range(self.iters_per_epoch)):
                 
                 X, Y, Z, Z_bar = self.sampler.next()
-                X, Y, Z, Z_bar = np_to_tensor(X, Y, Z, Z_bar)
                 
                 log_time("train")
                 losses = [op.train(X, Y, Z, Z_bar) if it % op.freq == 0 else -1000

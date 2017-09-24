@@ -30,9 +30,8 @@ class GanGen:
 
         bs = X.size(0)
 
-        ############################
-        # (2) Update G network: maximize log(D(G(z)))
-        ###########################
+        self.gen.train()
+        
         self.gen.zero_grad()
         x = self.gen(Z)
         d = self.dis(x)
@@ -40,5 +39,7 @@ class GanGen:
         errG.backward()
         D_G_z2 = d.data.mean()
         self.opt_gen.step()
+        
+        self.gen.eval()
         
         return errG.cpu().data.numpy()[0]

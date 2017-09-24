@@ -25,6 +25,8 @@ import ld_gan
 from ld_gan.utils.log_time import log_time
 from tqdm import tqdm
 from ld_gan.utils.nearest_neighbors import nn_gpu
+from torch.autograd import Variable
+import torch
 
 def precomputing_iterator(iterator, maxsize = 5):
     
@@ -310,39 +312,46 @@ def nn_sampler_life(enc,
                     n_neighbors = 5, 
                     nn_subset_size = None):
     
+    if type(X) is np.ndarray:
+        X = ld_gan.data_proc.transform(X)
+        y = ld_gan.data_proc.transform(y)
+    
     while True:
         
         log_time("get_z_enc")
         if nn_subset_size is None:
             imgs = X
         else:
-            rand_idxs = np.random.randint(0, len(X), nn_subset_size)
+            rand_idxs = (torch.rand(nn_subset_size) * len(X)).long().cuda()
             imgs = X[rand_idxs]
-        z_enc = ld_gan.utils.model_handler.apply_model(enc, imgs, batch_size = 500)
+        bs = 500
+        enc.eval()
+        z_enc = torch.cat([enc(x).detach() for x in torch.split(X, bs)])
+        z_enc = z_enc.squeeze()
+        enc.train()
         log_time("get_z_enc")
         
-        batch_idxs = np.random.randint(0, len(z_enc), batch_size)
+        batch_idxs = (torch.rand(256) * len(X)).long().cuda()
         
         log_time("find_nn")
-        dists = pairwise_distances(z_enc, 
-                                   z_enc[batch_idxs], 
-                                   metric='cosine')
-        idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
+        nn_idxs = nn_gpu(z_enc, z_enc[batch_idxs])
         log_time("find_nn")
 
         # get z_batch
-        batch_z_all = z_enc[idxs]
-        rand_weights = np.random.rand(n_neighbors, batch_size)
-        rand_weights = rand_weights / np.sum(rand_weights, axis=0)
-        rand_weights = rand_weights.transpose()
-        z_batch = [np.average(z_all, 0, w) for w, z_all in zip(rand_weights, batch_z_all)]
-        z_batch = np.array(z_batch)
+        rand_weights = Variable(torch.rand(batch_size, n_neighbors).cuda())
+        rand_weights = rand_weights / rand_weights.sum(dim=1).unsqueeze(1)
+        n_features = z_enc.size(1)
+        z_batch_all = Variable(torch.rand(batch_size, n_neighbors, n_features).cuda())
+        for n in range(n_neighbors):
+            z_batch_all[:, n, :] = z_enc[nn_idxs[:, n]] * rand_weights[:, n].unsqueeze(1)
+        z_batch = z_batch_all.sum(dim=1)
+        z_batch = z_batch.unsqueeze(2).unsqueeze(3)
         
         img_batch = imgs[batch_idxs]
         
         y_batch = y[batch_idxs]
         
-        yield img_batch, y_batch, z_batch, z_batch
+        yield img_batch, y_batch, z_batch, [batch_idxs, nn_idxs]
         
         
         

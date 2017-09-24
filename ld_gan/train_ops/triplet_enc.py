@@ -8,7 +8,7 @@ from ld_gan.utils.model_handler import apply_model, apply_models
 from ld_gan.data_proc.transformer import np_to_tensor, tensor_to_np
 import torch.nn.functional as F
 from sklearn.utils import shuffle
-from sklearn.metrics.pairwise import pairwise_distances
+from ld_gan.utils.nearest_neighbors import nn_gpu
 import __main__ as main
 
 
@@ -91,6 +91,13 @@ class TripletEnc:
 
         anchors, pos, neg = np_to_tensor(anchors, pos, neg)
         
+        
+        # train
+        
+        self.enc.train()
+        self.tnet.train()
+        
+        self.enc.zero_grad()
         dista, distb, embedded_x, embedded_y, embedded_z = self.tnet(anchors, 
                                                                      pos, 
                                                                      neg)
@@ -103,10 +110,11 @@ class TripletEnc:
         loss_embedd = embedded_x.norm(2) + embedded_y.norm(2) + embedded_z.norm(2)
         loss = loss_triplet + 0.001 * loss_embedd
 
-        # train
-        self.enc.zero_grad()
         loss.backward()
         self.opt_enc.step()
+        
+        self.tnet.eval()
+        self.enc.eval()
         
         return loss.cpu().data.numpy()[0]
     
@@ -241,8 +249,7 @@ def get_enc_space_suggestion(z_anc,
     n_pre_neg = int((1.-quantile_neg) * n_all)
         
     # get distances in encoded space
-    dists = pairwise_distances(z_anc, z_all, metric='cosine')
-    idxs_sorted = np.array([d.argsort() for d in dists])
+    idxs_sorted = nn_gpu(z_all, z_anc)
     
     # get indexes fullfilling quantile constraints
     idxs_pos = idxs_sorted[:, 1:n_pre_pos]

@@ -40,7 +40,8 @@ class InfoDis:
         errD_real.backward()
         D_x = d.data.mean()
 
-        # train with fake
+        self.dis.train()
+        
         x = self.gen(Z)
         d = self.dis(x.detach(), Z)
         errD_fake = self.criterion(d, zeros(bs))
@@ -48,5 +49,7 @@ class InfoDis:
         D_G_z1 = d.data.mean()
         errD = errD_real + errD_fake
         self.opt_dis.step()
+        
+        self.dis.eval()
         
         return errD.cpu().data.numpy()[0]

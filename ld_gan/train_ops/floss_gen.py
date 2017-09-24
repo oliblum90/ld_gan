@@ -25,10 +25,8 @@ class FLoss:
 
         bs = X.size(0)
 
-        ############################
-        # (1) Update enc
-        ###########################
-        # train with real
+        self.gen.train()
+        
         self.gen.zero_grad()
         self.enc.zero_grad()
         #z = self.enc(X).detach()
@@ -38,6 +36,8 @@ class FLoss:
         err.backward()
         mean_x = x.data.mean()
         self.opt_gen.step()
+        
+        self.gen.eval()
         
         return err.cpu().data.numpy()[0]
     

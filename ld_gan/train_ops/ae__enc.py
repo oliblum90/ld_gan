@@ -25,10 +25,8 @@ class AutoEncEnc:
 
         bs = X.size(0)
 
-        ############################
-        # (1) Update enc
-        ###########################
-        # train with real
+        self.enc.train()
+        
         self.enc.zero_grad()
         z = self.enc(X)
         x = self.gen(z.detach())
@@ -36,6 +34,8 @@ class AutoEncEnc:
         err.backward()
         mean_x = x.data.mean()
         self.opt_enc.step()
+        
+        self.enc.eval()
         
         return err.cpu().data.numpy()[0]
     
