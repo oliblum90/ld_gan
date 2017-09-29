@@ -5,6 +5,8 @@ import numpy as np
 import torch
 import ld_gan
 from sklearn.neighbors import NearestNeighbors
+from WeightNormalizedConv import WeightNormalizedConv2d as WNC
+from WeightNormalizedConv import WeightNormalizedConvTranspose2d as WNCT
 
 
 class enc_64(nn.Module):

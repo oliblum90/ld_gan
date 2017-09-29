@@ -13,6 +13,7 @@ from data_proc.transformer import np_to_tensor, tensor_to_np
 import ld_gan
 import datetime
 import time
+from tqdm import tqdm
 
 
 
@@ -1422,9 +1423,35 @@ def tiplet_nn(imgs_real,
     
     
     
+def pre_compute_tsne(project, imgs_real, n_pts_tsne=4000):
     
-    
-    
+    for epoch in tqdm(np.arange(0,1000,50)):
+        
+        enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+        gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+
+        f_X = ld_gan.utils.model_handler.apply_model(enc, imgs_real, 1000)
+
+
+        epoch_str = str(epoch).zfill(4)
+        fname = "projects/" + project + "/tsne_pts/" \
+                          + epoch_str + "_" + str(n_pts_tsne) + ".npy"
+
+        try:
+            z_mapped = np.load(fname)
+
+        except:
+            print "compute tsne..."
+            tsne = TSNE(n_components=2, 
+                        random_state=0, 
+                        metric = 'cosine', 
+                        learning_rate=1000)
+            z_mapped = tsne.fit_transform(f_X[:n_pts_tsne])
+            try:
+                os.mkdir("projects/" + project + "/tsne_pts")
+            except:
+                pass
+            np.save(fname, z_mapped)
     
     
     

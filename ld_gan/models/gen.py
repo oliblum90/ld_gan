@@ -2,6 +2,8 @@ import torch.nn as nn
 from torch.nn import ConvTranspose2d as CT
 from init_weights import init_weights
 import numpy as np
+from WeightNormalizedConv import WeightNormalizedConv2d as WNC
+from WeightNormalizedConv import WeightNormalizedConvTranspose2d as WNCT
 
 
 

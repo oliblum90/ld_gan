@@ -3,6 +3,8 @@ from init_weights import init_weights
 import numpy as np
 import torch.nn.functional as F
 import torch
+from WeightNormalizedConv import WeightNormalizedConv2d as WNC
+from WeightNormalizedConv import WeightNormalizedConvTranspose2d as WNCT
     
     
 class Dis(nn.Module):
