@@ -1423,9 +1423,11 @@ def tiplet_nn(imgs_real,
     
     
     
-def pre_compute_tsne(project, imgs_real, n_pts_tsne=4000):
+def pre_compute_tsne(project, imgs_real, n_pts_tsne=4000, epochs=None):
     
-    for epoch in tqdm(np.arange(0,1000,50)):
+    epochs = epochs if epochs is not None else np.arange(0,1000,50)
+    
+    for epoch in tqdm(epochs):
         
         enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
         gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
@@ -1441,7 +1443,6 @@ def pre_compute_tsne(project, imgs_real, n_pts_tsne=4000):
             z_mapped = np.load(fname)
 
         except:
-            print "compute tsne..."
             tsne = TSNE(n_components=2, 
                         random_state=0, 
                         metric = 'cosine', 

@@ -119,7 +119,7 @@ class Trainer:
         
         print "generate test imgs..."
         
-        X, Y, Z, Z_bar = self.sampler.next()
+        X, Y, Z, _, _, _ = self.sampler.next()
         
         Z_exact = self.enc(np_to_tensor(X))
         Z = np_to_tensor(Z)
@@ -152,7 +152,7 @@ class Trainer:
         n_iters = n_f_vecs / self.batch_size + 1
         f_vecs, imgs = [], []
         for step in range(n_iters):
-            X, Y, Z, Z_bar = self.sampler.next()
+            X, Y, Z, _, _, _ = self.sampler.next()
             f_vecs.append(Z)
             imgs.append(X)
         X = np.concatenate(imgs)[:n_f_vecs]
@@ -192,11 +192,11 @@ class Trainer:
                         
             for it in tqdm(range(self.iters_per_epoch)):
                 
-                X, Y, Z, Z_bar = self.sampler.next()
-                X, Y, Z, Z_bar = np_to_tensor(X, Y, Z, Z_bar)
+                X, Y, Z, _, _, _ = self.sampler.next()
+                X, Y, Z = np_to_tensor(X, Y, Z)
                 
                 log_time("train")
-                losses = [op.train(X, Y, Z, Z_bar) if it % op.freq == 0 else -1000
+                losses = [op.train(X, Y, Z, Z) if it % op.freq == 0 else -1000
                           for op in self.train_ops]
                 log_time("train")
             

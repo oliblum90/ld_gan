@@ -62,18 +62,12 @@ def nn_sampler_life(enc,
                     y, 
                     batch_size, 
                     nn_search_radius = 50, 
-                    n_neighbors = 5, 
-                    nn_subset_size = None):
+                    n_neighbors = 5):
     
     while True:
         
         log_time("get_z_enc")
-        if nn_subset_size is None:
-            imgs = X
-        else:
-            rand_idxs = np.random.randint(0, len(X), nn_subset_size)
-            imgs = X[rand_idxs]
-        z_enc = ld_gan.utils.model_handler.apply_model(enc, imgs, batch_size = 500)
+        z_enc = ld_gan.utils.model_handler.apply_model(enc, X, batch_size = 500)
         log_time("get_z_enc")
         
         batch_idxs = np.random.randint(0, len(z_enc), batch_size)
@@ -88,12 +82,12 @@ def nn_sampler_life(enc,
         rand_weights = np.random.rand(n_neighbors, batch_size)
         rand_weights = rand_weights / np.sum(rand_weights, axis=0)
         rand_weights = rand_weights.transpose()
-        z_batch = [np.average(z_all, 0, w) for w, z_all in zip(rand_weights, batch_z_all)]
+        z_batch = [np.average(za, 0, w) for w, za in zip(rand_weights, batch_z_all)]
         z_batch = np.array(z_batch)
         
-        img_batch = imgs[batch_idxs]
-        
+        x_batch = X[batch_idxs]
         y_batch = y[batch_idxs]
+        z_batch_orig = z_enc[batch_idxs]
         
-        yield img_batch, y_batch, z_batch, batch_idxs, idxs
+        yield x_batch, y_batch, z_batch, z_batch_orig, batch_idxs, idxs
 

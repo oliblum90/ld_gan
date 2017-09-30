@@ -1,18 +1,16 @@
-import os
-os.chdir("../")
-
 import unittest
 
 class TestSampler(unittest.TestCase):
 
-    def test(self):
+    def test_nn_sampler_life(self):
         
         import ld_gan
         import numpy as np
         from sklearn.neighbors import NearestNeighbors
+        from ld_gan.utils.nearest_neighbors import nn_gpu
         
         # load model
-        project, epoch = "xf_11111_mc.py", 650
+        project, epoch = "xf_11111_t1.py", 650
         enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
         
         # load data
@@ -21,30 +19,28 @@ class TestSampler(unittest.TestCase):
         Z = ld_gan.utils.model_handler.apply_model(enc, X, batch_size=100)
         
         # create sampler and sample
-        sampler = ld_gan.sample.nn_sampler_life(enc, X, Y, 256, n_neighbors=5)
-        x, y, z, idx, idx_nn = sampler.next()
-        
+        sampler = ld_gan.sample.nn_sampler_life(enc, X, Y, 256, 
+                                                n_neighbors=5,
+                                                nn_search_radius = 50)
+        x, y, z, z_orig, batch_idxs, idxs = sampler.next()
+                
         # check that x/y/z correspond to idx/idx_nn
-        x_np = ld_gan.data_proc.transform(x)
-        y_np = ld_gan.data_proc.transform(y)
-        z_np = ld_gan.data_proc.transform(z)
-        idx_np = ld_gan.data_proc.transform(idx)
-        idx_nn_np = ld_gan.data_proc.transform(idx_nn)
+        self.assertEqual(np.all(x == X[batch_idxs]), True)
+        self.assertEqual(np.all(y == Y[batch_idxs]), True)
+        self.assertEqual(np.all(z_orig == Z[batch_idxs]), True)
         
-        # check that imgs are (almost) equal
-        max_diff = np.abs(x_np.astype('float') - X[idx_np].astype('float')).max()
-        self.assertLessEqual(max_diff, 1)
+        # check nearest neighbors
+        nn_50 = nn_gpu(Z, z_orig, n_neighbors=50)
+        for i, n in zip(idxs, nn_50):
+            for ii in i:
+                self.assertEqual(ii in n, True)
         
-        # check that ys are equal
-        self.assertEqual(np.all(y_np == Y[idx_np]), True)
+        # check that z is a linear combination of its neighbors
+        for z_nn_single, z_single in zip(Z[idxs], z):
+            z_nn_matrix = np.concatenate([z_nn_single, np.array([z_single])])
+            rank = np.linalg.matrix_rank(z_nn_matrix)
+            self.assertLessEqual(rank, 5)
         
-        # check that nearest neighbors are nearly correct
-        _, idxs_sknn = NearestNeighbors(n_neighbors=5).fit(Z).kneighbors(Z[idx_np])
-        
-        # check that there is a linear combination to construct z
-        
-        # check that most indexes are used after two epoch
-        
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
+    

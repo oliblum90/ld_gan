@@ -30,9 +30,6 @@ class GanDis:
 
         bs = X.size(0)
 
-        ############################
-        # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
-        ###########################
         # train with real
         self.dis.zero_grad()
         d = self.dis(X)

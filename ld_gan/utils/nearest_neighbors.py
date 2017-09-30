@@ -3,7 +3,7 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-def nn_gpu(z_all, z_batch, n_neighbors = 5):
+def nn_gpu(z_all, z_batch, n_neighbors = 5, return_dist=False):
     
     if type(z_all) is np.ndarray:
         type_np = True
@@ -19,8 +19,13 @@ def nn_gpu(z_all, z_batch, n_neighbors = 5):
     
     if n_neighbors is not None:
         idxs = idxs[:, :n_neighbors]
+        dists = dists[:, :n_neighbors]
     
     if type_np:
         idxs = (idxs.data).cpu().numpy()
+        dists = (dists.data).cpu().numpy()
+        
+    if return_dist:
+        return torch.ones_like(dists) - dists
     
     return idxs

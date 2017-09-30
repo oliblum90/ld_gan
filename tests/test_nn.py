@@ -1,6 +1,3 @@
-import os
-os.chdir("../")
-
 import unittest
 
 class TestNN(unittest.TestCase):
@@ -10,6 +7,7 @@ class TestNN(unittest.TestCase):
         import numpy as np
         from ld_gan.utils.nearest_neighbors import nn_gpu
         from sklearn.metrics.pairwise import pairwise_distances
+        from sklearn.neighbors import NearestNeighbors
         
         n_neighbors = 5
         
@@ -18,15 +16,20 @@ class TestNN(unittest.TestCase):
         z_batch = np.random.rand(256, 256)
         
         # compute nearest neighbors
-        idxs = nn_gpu(z_batch, z_all, n_neighbors = n_neighbors)
+        idxs = nn_gpu(z_all, z_batch, n_neighbors = n_neighbors)
         
-        # compute nearest neighbors with sklearn
-        dists = pairwise_distances(z_all, 
-                                   z_batch, 
+        # compute nearest neighbors with sklearn pairwise distance
+        dists = pairwise_distances(z_batch,
+                                   z_all, 
                                    metric='cosine')
         idxs_sk = np.argsort(dists, axis=1)[:, :n_neighbors]
-        print idxs.shape
-        print idxs_sk.shape
+        
+        # compute nearest neighbors with sklearn NearestNeighbors
+        nn = NearestNeighbors(metric='cosine', n_neighbors=n_neighbors).fit(z_all)
+        _, idxs_sk_nn = nn.kneighbors(z_batch)
+                
+        self.assertEqual(np.all(idxs == idxs_sk), True)
+        self.assertEqual(np.all(idxs == idxs_sk_nn), True)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

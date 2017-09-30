@@ -1,49 +1,7 @@
 import torch.nn as nn
-from torch.nn import ConvTranspose2d as CT
 from init_weights import init_weights
 import numpy as np
-from WeightNormalizedConv import WeightNormalizedConv2d as WNC
-from WeightNormalizedConv import WeightNormalizedConvTranspose2d as WNCT
 
-
-
-class gen_64(nn.Module):
-    
-    def __init__(self, 
-                 latent_size = 100,
-                 complexity = 64,
-                 n_col = 3):
-        
-        super(gen_64, self).__init__()
-        self.main = nn.Sequential(
-            # BLOCK 0: 1 --> 4
-            nn.ConvTranspose2d(latent_size, complexity*8, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(complexity*8),
-            nn.ReLU(True),
-            # BLOCK 1: 4 --> 8
-            nn.ConvTranspose2d(complexity*8, complexity*4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(complexity*4),
-            nn.ReLU(True),
-            # BLOCK 2: 8 --> 16
-            nn.ConvTranspose2d(complexity*4, complexity*2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(complexity*2),
-            nn.ReLU(True),
-            # BLOCK 3: 16 --> 32
-            nn.ConvTranspose2d(complexity*2, complexity, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(complexity),
-            nn.ReLU(True),
-            # BLOCK 4: 32 --> 64
-            nn.ConvTranspose2d(complexity, n_col, 4, 2, 1, bias=False),
-            nn.Tanh()
-        )
-        self.main.apply(init_weights)
-        self.main.cuda()
-
-    def forward(self, input):
-        output = self.main(input)
-        return output
-
-    
     
 class Gen(nn.Module):
     
@@ -52,22 +10,25 @@ class Gen(nn.Module):
                  ipt_size        = 64,
                  complexity      = 64,
                  n_col           = 3,
-                 extra_fc_layer  = False):
+                 w_norm          = False,
+                 batchnorm  = True):
         
         super(Gen, self).__init__()
         
+        if w_norm:
+            from WeightNormalizedConv import WeightNormalizedConvTranspose2d as CT
+        else:
+            from torch.nn import ConvTranspose2d as CT
+        
         self.n_blocks = int(np.log2(ipt_size) - 1)
         self.main = nn.Sequential()
-        self.extra_fc_layer = extra_fc_layer
         self.latent_size = latent_size
-        
-        if self.extra_fc_layer:
-            self.fc0 = nn.Linear(latent_size, latent_size)
         
         # BLOCK 0
         c_out = complexity * 2**(self.n_blocks - 2)
         self.main.add_module('b00', CT(latent_size, c_out, 4, 1, 0, bias=False))
-        self.main.add_module('b01', nn.BatchNorm2d(c_out))
+        if batchnorm:
+            self.main.add_module('b01', nn.BatchNorm2d(c_out))
         self.main.add_module('b02', nn.ReLU(True))
 
         # BLOCKS 1 - N-1
@@ -76,7 +37,8 @@ class Gen(nn.Module):
             c_out = complexity * 2**(b-1)
             n = 'b' + str(b)
             self.main.add_module(n+'0', CT(c_in, c_out, 4, 2, 1, bias=False))
-            self.main.add_module(n+'1', nn.BatchNorm2d(c_out))
+            if batchnorm:
+                self.main.add_module(n+'1', nn.BatchNorm2d(c_out))
             self.main.add_module(n+'2', nn.ReLU(True))
         
         # BLOCK N: 4 --> 1
@@ -86,11 +48,6 @@ class Gen(nn.Module):
        
     
     def forward(self, x):
-        
-        #if self.extra_fc_layer:
-        #    x = x.view(-1, self.latent_size)
-        #    x = self.fc0(x)
-        #    x = x.view(-1, self.latent_size, 1, 1)
                 
         x = self.main(x)
         
