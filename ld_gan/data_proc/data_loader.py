@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
 
 PATH_MNIST   = "/export/home/oblum/projects/ls_gan/data/mnist/jpg_32"
-PATH_FLOWER  = "/export/home/oblum/projects/ls_gan/data/flowers_102/jpg_128"
+PATH_FLOWER  = "/export/home/oblum/projects/ld_gan/data/flowers_102/jpg_256"
 PATH_CELEBA  = "/export/home/oblum/projects/ls_gan/data/celebA/jpg_64"
 PATH_CELEBA_128 = "/export/home/oblum/projects/ls_gan/data/celebA/jpg_128/faces"
 PATH_FLOWER_17 = "/export/home/oblum/projects/ls_gan/data/flowers_17/jpg_64"
