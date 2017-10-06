@@ -18,6 +18,7 @@ def entropy_loss(z_all, z_batch, bw=4.5):
     # get error
     err = torch.mean(gaus_mat)
     
+    return torch.nn.functional.relu(torch.log(err) + 60)
     return err
 
 
@@ -34,7 +35,7 @@ class EntropyEnc:
         self.opt_enc = optim.Adam(self.enc.parameters(), lr=lr, betas=(0.5, 0.999))
         
     
-    def train(self, X, Y, Z, Z_bar):
+    def train(self, X, Y, Z, batch_idxs, nn_idxs, sr_idxs, z_all):
         
         self.enc.zero_grad()
         z = self.enc(X)
@@ -42,4 +43,4 @@ class EntropyEnc:
         err.backward()
         self.opt_enc.step()
         
-        return err.cpu().data.numpy()
+        return err.cpu().data.numpy()[0]

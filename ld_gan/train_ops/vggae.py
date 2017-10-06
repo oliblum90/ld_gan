@@ -5,10 +5,14 @@ import torch.optim as optim
 import numpy as np
 import __main__ as main
 import os
+import ld_gan
     
 class VGGAutoEnc:
     
-    def __init__(self, vgg, enc, gen, lr, write_log=True, freq=1):
+    def __init__(self, enc, gen, lr, vgg=None, write_log=True, freq=1):
+        
+        if vgg is None:
+            vgg = ld_gan.models.VGG()
         
         self.freq = freq
         
@@ -36,16 +40,14 @@ class VGGAutoEnc:
             f.write(header)
             
     
-    def train(self, X, Y, Z, Z_bar):
-
-        bs = X.size(0)
+    def train(self, X, Y, Z, batch_idxs, nn_idxs, sr_idxs, z_all):
 
         self.gen.zero_grad()
         self.enc.zero_grad()
         C1, C2, C3, C4, C5 = self.vgg(X)
         z = self.enc(X)
         x = self.gen(z)
-        c1, c2, c3, c4, c5 = self.vgg(x.detach())
+        c1, c2, c3, c4, c5 = self.vgg(x)
         e0 = self.criterion(x, X)
         e1 = self.criterion(c1, C1.detach())
         e2 = self.criterion(c2, C2.detach())
@@ -54,7 +56,6 @@ class VGGAutoEnc:
         e5 = self.criterion(c5, C5.detach())
         err = e0 + e1 + e2 + e3 + e4 + e5
         err.backward()
-        mean_x = x.data.mean()
         self.opt_enc.step()
         self.opt_gen.step()
 

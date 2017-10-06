@@ -81,7 +81,7 @@ class Clf:
             f.write(header)
         
     
-    def train(self, X, Y, Z, Z_bar):
+    def train(self, X, Y, Z, batch_idxs, nn_idxs, sr_idxs, z_all):
         
         self.enc.zero_grad()
         self.clf_layer.zero_grad()

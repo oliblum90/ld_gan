@@ -27,7 +27,8 @@ class Trainer:
                  gen_tsne_step     = 10,
                  save_model_step   = 50,
                  bs_tsne_pts       = None,
-                 callbacks         = []):
+                 callbacks         = [],
+                 gpu_id            = None):
         
         # set class variables
         if project_name is None:
@@ -75,6 +76,9 @@ class Trainer:
         np.savetxt(os.path.join(self._path_log, "n_samples"), 
                    np.array([self.n_samples]))
         log_host_name(self._path_log)
+        if gpu_id is not None:
+            np.savetxt(os.path.join(self._path_log, "gpu_id.txt"),
+                       np.array([gpu_id]))
         
         # save models
         torch.save(self.gen, os.path.join(self._path_model, "gen.pth"))
@@ -119,15 +123,11 @@ class Trainer:
         
         print "generate test imgs..."
         
-        X, Y, Z, _, _, _ = self.sampler.next()
+        X, Y, Z, _, _, _, _ = self.sampler.next()
         
-        Z_exact = self.enc(np_to_tensor(X))
-        Z = np_to_tensor(Z)
-            
-        x = self.gen(Z)
-        x_exact = self.gen(Z_exact)
-        x = tensor_to_np(x)
-        x_exact = tensor_to_np(x_exact)
+        Z_exact = ld_gan.utils.model_handler.apply_model(self.enc, X)
+        x = ld_gan.utils.model_handler.apply_model(self.gen, Z)
+        x_exact = ld_gan.utils.model_handler.apply_model(self.gen, Z_exact)
         
         if fname is not None:
             
@@ -145,26 +145,32 @@ class Trainer:
             return x, X
         
         
-    def save_tsne_hist(self, fname, n_f_vecs = 1000, n_tsne_imgs = 30):
+    def save_tsne_hist(self, e_str, n_f_vecs = 4000, n_tsne_imgs = 30):
         
         print "generate z-histogram and tsne visualization..."
         
         n_iters = n_f_vecs / self.batch_size + 1
         f_vecs, imgs = [], []
+        ys = []
         for step in range(n_iters):
-            X, Y, Z, _, _, _ = self.sampler.next()
+            X, Y, Z, _, _, _, _ = self.sampler.next()
             f_vecs.append(Z)
             imgs.append(X)
+            ys.append(Y)
         X = np.concatenate(imgs)[:n_f_vecs]
         Z = np.concatenate(f_vecs)[:n_f_vecs]
-        Z = ld_gan.utils.model_handler.apply_model(self.enc, X, self.bs_tsne_pts)
+        Y = np.concatenate(ys)[:n_f_vecs]
+        Z = ld_gan.utils.model_handler.apply_model(self.enc, X, self.batch_size)
             
-        fname = os.path.join(self._path_hist_tsne, fname + "_hist_tsne.png")
+        fname = os.path.join(self._path_hist_tsne, e_str + "_hist_tsne.png")
         visualize.plot_hist_and_tsne(Z, 
+                                     y = Y,
                                      imgs = X, 
                                      fname = fname,
                                      n_clusters = n_tsne_imgs,
-                                     n_pts_tsne = n_f_vecs)
+                                     n_pts_tsne = n_f_vecs,
+                                     project = self.project_name,
+                                     epoch_str = e_str)
         
         
     def _show_training_status(self, epoch):
@@ -192,11 +198,11 @@ class Trainer:
                         
             for it in tqdm(range(self.iters_per_epoch)):
                 
-                X, Y, Z, _, _, _ = self.sampler.next()
+                X, Y, Z, i1, i2, i3, z_all = self.sampler.next()
                 X, Y, Z = np_to_tensor(X, Y, Z)
                 
                 log_time("train")
-                losses = [op.train(X, Y, Z, Z) if it % op.freq == 0 else -1000
+                losses = [op.train(X,Y,Z,i1,i2,i3,z_all) if it % op.freq == 0 else -1000
                           for op in self.train_ops]
                 log_time("train")
             
@@ -215,7 +221,7 @@ class Trainer:
             
             # save tsne and hist
             if epoch % self._gen_tsne_step == 0:
-                self.save_tsne_hist(fname = e_str)
+                self.save_tsne_hist(e_str)
 
             # save model
             if epoch % self._save_model_step == 0:

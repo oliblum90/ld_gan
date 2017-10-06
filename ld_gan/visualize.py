@@ -475,7 +475,9 @@ def plot_hist_and_tsne(f_X,
                        fname = None, 
                        n_pts_tsne = 1000,
                        n_bins = 50,
-                       n_clusters = 30):
+                       n_clusters = 30,
+                       project = None,
+                       epoch_str = None):
     
     if fname is not None:
         matplotlib.use('Agg')
@@ -500,10 +502,19 @@ def plot_hist_and_tsne(f_X,
                 metric = 'cosine', 
                 learning_rate=1000)
     X_tsne = tsne.fit_transform(f_X[:n_pts_tsne])
+    
+    fname_pts = project + "/tsne_pts/" \
+                + epoch_str + "_" + str(n_pts_tsne) + ".npy"
+    try:
+        os.mkdir(project + "/tsne_pts")
+    except:
+        pass
+    np.save(fname_pts, X_tsne)
+    
     if y is None:
-        ax2.scatter(X_tsne[:,0], X_tsne[:,1])
+        ax2.scatter(X_tsne[:,0], X_tsne[:,1], s = 10, alpha = 0.3)
     else:
-        ax2.scatter(X_tsne[:,0], X_tsne[:,1], c=y[:n_pts_tsne])
+        ax2.scatter(X_tsne[:,0], X_tsne[:,1], c=y[:n_pts_tsne], s = 10, alpha = 0.3)
         
     if imgs is not None:
         from sklearn.cluster import KMeans
@@ -717,14 +728,15 @@ def tsne_to_interpol_arr(imgs_real,
                          n_pts_tsne = 4000,
                          n_neighbors = 5,
                          alpha = 0.003,
-                         real_img_mode = "single"):
+                         real_img_mode = "single",
+                         recompute_tsne = False):
     
     import matplotlib.pylab as plt
     
     enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
     gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
     
-    f_X = ld_gan.utils.model_handler.apply_model(enc, imgs_real, 1000)
+    f_X = ld_gan.utils.model_handler.apply_model(enc, imgs_real, 100)
     
     if z_mapped is None:
         epoch_str = str(epoch).zfill(4)
@@ -732,6 +744,8 @@ def tsne_to_interpol_arr(imgs_real,
                           + epoch_str + "_" + str(n_pts_tsne) + ".npy"
         
         try:
+            if recompute_tsne:
+                jjj
             z_mapped = np.load(fname)
         
         except:
@@ -1259,20 +1273,19 @@ def time_eval(project):
     plt.show()
     
     
-def gpu(max_last_mod=120, lj=30):
+def gpu(max_last_mod=120, lj=25):
     
-    print "name".ljust(lj), "host".ljust(lj), "epoch"
-    print "--------------------------------------------------------------------"
+    print "name".ljust(30), "host".ljust(20), "epoch".ljust(15), "gpu"
+    print "------------------------------------------------------------------------------"
     
     n_projects_running = 0
     for p in sorted(os.listdir("projects")):
         fname = os.path.join("projects", p, "log/logs.txt")
         t = time.time() - os.path.getmtime(fname)
-        #print p.ljust(35), t
         if  t < max_last_mod:
             
             # process name
-            print p.ljust(lj),
+            print p.ljust(30),
             
             # host name
             fname = os.path.join("projects", p, "log/host_name.txt")
@@ -1281,7 +1294,7 @@ def gpu(max_last_mod=120, lj=30):
                     host_name = f.read()
             else:
                 host_name = "-"
-            print host_name.ljust(lj),
+            print host_name.ljust(20),
             
             # epoch
             fname = "projects/" + p + "/log/iters_per_epoch"
@@ -1289,11 +1302,19 @@ def gpu(max_last_mod=120, lj=30):
             fname = os.path.join("projects/", p, 'log/logs.txt')
             n_iters = len(np.loadtxt(fname, skiprows=1, delimiter=" "))
             epoch = n_iters / float(iters_per_epoch)
-            print np.round(epoch, 2),
+            print str(np.round(epoch, 2)).ljust(15),
+            
+            # gpu
+            try:
+                fname = "projects/" + p + "/log/gpu_id.txt"
+                gpu_idx = int(np.loadtxt(fname))
+                print gpu_idx,
+            except:
+                pass
             
             print " "
             n_projects_running += 1
-    print "--------------------------------------------------------------------"
+    print "------------------------------------------------------------------------------"
     print "\n"
     print "{} projects running".format(n_projects_running)
     

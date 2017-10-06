@@ -2,6 +2,8 @@ from torchvision.models.vgg import model_urls
 from torch import nn
 import torchvision
     
+RETURN_LAYERS = [5, 12, 19, 32, 45]
+    
 class VGG(nn.Module):
     
     def __init__(self):
@@ -9,45 +11,19 @@ class VGG(nn.Module):
         super(VGG, self).__init__()
         
         model_urls['vgg19_bn'] = model_urls['vgg19_bn'].replace('https://', 'http://')
-        vgg = torchvision.models.vgg19_bn(pretrained=True)
+        self.vgg = torchvision.models.vgg19_bn(pretrained=True)
+        self.vgg.cuda()
+        self.vgg.eval()
         
-        self.l_00 = list(vgg.features.children())[0]
-        self.l_01 = list(vgg.features.children())[1]
-        self.l_02 = list(vgg.features.children())[2]
-        self.l_03 = list(vgg.features.children())[3]
-        self.l_04 = list(vgg.features.children())[4]
-        self.l_05 = list(vgg.features.children())[5]
-        self.l_06 = list(vgg.features.children())[6]
-        self.l_07 = list(vgg.features.children())[7]
-        self.l_08 = list(vgg.features.children())[8]
-        self.l_09 = list(vgg.features.children())[9]
-        self.l_10 = list(vgg.features.children())[10]
-        self.l_11 = list(vgg.features.children())[11]
-        self.l_12 = list(vgg.features.children())[12]
-        self.l_13 = list(vgg.features.children())[13]
-        self.l_14 = list(vgg.features.children())[14]
-        self.l_15 = list(vgg.features.children())[15]
-        self.l_16 = list(vgg.features.children())[16]
 
-    def forward(self, x):
+    def forward(self, x, return_layers = RETURN_LAYERS):
         
-        x      = self.l_00(x)
-        x      = self.l_01(x)
-        x = c1 = self.l_02(x)
-        x      = self.l_03(x)
-        x      = self.l_04(x)
-        x = c2 = self.l_05(x)
-        x      = self.l_06(x)
-        x      = self.l_07(x)
-        x      = self.l_08(x)
-        x = c3 = self.l_09(x)
-        x      = self.l_10(x)
-        x      = self.l_11(x)
-        x = c4 = self.l_12(x)
-        x      = self.l_13(x)
-        x      = self.l_14(x)
-        x      = self.l_15(x)
-        x = c5 = self.l_16(x)
+        features = []
+        n_layers = max(return_layers)
+        for l in range(n_layers + 1):
+            x = list(self.vgg.features.children())[l](x)
+            if l in return_layers:
+                features.append(x)
         
-        return c1, c2, c3, c4, c5
+        return features
     

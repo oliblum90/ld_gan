@@ -21,7 +21,7 @@ class AutoEncGen:
         self.opt_gen = optim.Adam(self.gen.parameters(), lr=lr)
         
     
-    def train(self, X, Y, Z, Z_bar):
+    def train(self, X, Y, Z, batch_idxs, nn_idxs, sr_idxs, z_all):
 
         bs = X.size(0)
 

@@ -5,14 +5,41 @@ import numpy as np
 
 
 def load_model(project, epoch, model_name, test_mode = True):
-        
-    model = _load_model(project, epoch, model_name, test_mode = test_mode)
-        
-    if "DataParallel" in str(model):
-        return load_parallel_model(project, epoch, model_name, test_mode = test_mode)
-    else:
-        return model
+    
+    try:
+        model = _load_model(project, epoch, model_name, test_mode = test_mode)
 
+        if "DataParallel" in str(model):
+            return load_parallel_model(project, epoch, model_name, test_mode = test_mode)
+        else:
+            return model
+        
+    except:
+        model =  _load_model_with_different_gpu_id(project, epoch, model_name, 
+                                                   test_mode = test_mode)
+    if model is None:
+        "print NO MODEL LOADED!!!"
+        
+    return model
+
+def _load_model_with_different_gpu_id(project, epoch, model_name, test_mode = True):
+    
+    for i in range(8):
+        try:
+            epoch_str = str(epoch).zfill(4)
+            fname = "projects/" + project + "/model/" + model_name[0] + "_" + epoch_str + ".pth"
+            model = torch.load(fname, map_location={'cuda:'+str(i):'cuda:0'})
+            
+            print "found gpu mapping: ", {'cuda:'+str(i):'cuda:0'}
+            print "loaded model '{}'".format(fname)
+            
+            if test_mode:
+                model.eval()
+            
+            return model
+        
+        except:
+            pass
     
 def _load_model(project, epoch, model_name, test_mode = True):
         
@@ -104,4 +131,5 @@ def apply_models(data, batch_size, *models):
     arr_out = np.concatenate(arr_out)
     
     return arr_out
+
 
