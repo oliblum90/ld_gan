@@ -8,6 +8,7 @@ import ld_gan
 import numpy as np
 import sys
 from tqdm import tqdm
+import scipy.misc
 
 
 if __name__ == "__main__":
@@ -22,13 +23,14 @@ if __name__ == "__main__":
         torch.manual_seed(RAND_SEED)
         torch.cuda.manual_seed_all(RAND_SEED)
 
+        SAVE_PATH = "eval_imgs/xf_111v1.py_NEW"
         N_IMG = 50000
-        BATCH_SIZE  = 256
+        BATCH_SIZE  = 512
         PROJECT = "xf_111v1.py"
         EPOCH = 350
 
 
-        X, Y = ld_gan.data_proc.data_loader.load_data(2, verbose=2)
+        X, Y = ld_gan.data_proc.data_loader.load_data(1, verbose=1, resize = 64)
         n_classes = Y.shape[1]
         Y = np.argmax(Y, axis = 1)
         img_size = X.shape[2]
@@ -42,11 +44,25 @@ if __name__ == "__main__":
                                                 nn_search_radius = 10,
                                                 n_neighbors = 2)
         
-        n_iters = int(50000 / BATCH_SIZE) + 1 
+        n_iters = int(N_IMG / BATCH_SIZE) + 1 
         
-        for i in tqdm(range(n_iters)):
+        for it in tqdm(range(n_iters)):
             
-            X, Y, Z, _, _, _, _ = sampler.next()
+            _, _, Z, _, nn_idxs, _, _ = sampler.next()
+            
+            # get class
+            nn_idxs = np.array(nn_idxs)
+            y = Y[nn_idxs[:, 0]] == Y[nn_idxs[:, 1]]
+            y = y.astype(np.int)
+            y[y==0] = -1
+            y[y==1] = Y[nn_idxs[:, 0]][y==1]
+            
+            imgs = ld_gan.utils.model_handler.apply_model(gen, Z)
+            for idx, img in enumerate(imgs):
+                idx_img = str(it * BATCH_SIZE + idx)
+                class_img = str(y[idx])
+                fname = os.path.join(SAVE_PATH, idx_img + "_" + class_img + '.png')
+                scipy.misc.imsave(fname, img)
 
         
 

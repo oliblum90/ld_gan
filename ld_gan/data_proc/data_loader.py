@@ -16,9 +16,9 @@ PATH_BIRDS = "/export/home/oblum/projects/ld_gan/data/birds/images"
 
 
 def load_data(path, 
-              split_test_train_ratio = None, 
+              index_list = None,
               random_state=42, 
-              verbose = 0, 
+              verbose = 1, 
               n_jobs = 1,
               resize = None):
     
@@ -50,7 +50,13 @@ def load_data(path,
         
         c = sorted(class_dirs)[idx]
         
-        fnames = [os.path.join(c, f) for f in sorted(os.listdir(c))]
+        if index_list is None:
+            fnames = [os.path.join(c, f) for f in sorted(os.listdir(c))]
+        else:
+            def name2idx(fname):
+                return int(fname[-9:-4])
+            fnames = [os.path.join(c, f) for f in sorted(os.listdir(c)) \
+                                         if name2idx(f) in index_list]
         
         iterator_2 = sorted(fnames)
         if verbose == 2:
@@ -75,47 +81,16 @@ def load_data(path,
     
     y = np.eye(n_classes - 1)[y]
     
-    if split_test_train_ratio is None:
-        return X, y
-    else:
-        X, Xt, y, yt = train_test_split(X, y, 
-                                        test_size = split_test_train_ratio,
-                                        random_state = random_state)
-        return X, y, Xt, yt
+    return X, y
     
     
 
     
-def _imap_bar(func, args, n_processes = 10):
-    #try:
-    p = Pool(n_processes)
-    res_list = []
-    with tqdm(total = len(args)) as pbar:
-        for i, res in tqdm(enumerate(p.imap(func, args))):
-            pbar.update()
-            res_list.append(res)
-    pbar.close()
-    p.close()
-    p.join()
-    return res_list
-    #except:
-    #    p.close()
-    #    p.join()
-    #    print "error!!" 
+def load_data_split(path, 
+                    random_state=42, 
+                    verbose = 0, 
+                    n_jobs = 1,
+                    resize = None):
+    pass
     
-def _imap_unordered_bar(func, args, n_processes = 10):
-    try:
-        p = Pool(n_processes)
-        res_list = []
-        with tqdm(total = len(args)) as pbar:
-            for i, res in tqdm(enumerate(p.imap_unordered(func, args))):
-                pbar.update()
-                res_list.append(res)
-        pbar.close()
-        p.close()
-        p.join()
-        return res_list
-    except:
-        p.close()
-        p.join()
-        print "error!!"
+    

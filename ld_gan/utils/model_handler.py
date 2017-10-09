@@ -10,16 +10,16 @@ def load_model(project, epoch, model_name, test_mode = True):
         model = _load_model(project, epoch, model_name, test_mode = test_mode)
 
         if "DataParallel" in str(model):
-            return load_parallel_model(project, epoch, model_name, test_mode = test_mode)
-        else:
-            return model
+            model = load_parallel_model(project, epoch, model_name, test_mode = test_mode)
         
     except:
         model =  _load_model_with_different_gpu_id(project, epoch, model_name, 
                                                    test_mode = test_mode)
     if model is None:
         "print NO MODEL LOADED!!!"
-        
+    
+    model.cuda()
+    
     return model
 
 def _load_model_with_different_gpu_id(project, epoch, model_name, test_mode = True):
@@ -133,3 +133,20 @@ def apply_models(data, batch_size, *models):
     return arr_out
 
 
+def get_interpol_imgs(enc, gen, 
+                      img1, img2, 
+                      n_interpols = 7, 
+                      concat = True):
+    
+    z1, z2 = ld_gan.utils.model_handler.apply_model(enc, np.array([img1, img2]))
+    zs = [z2*factor+z1*(1-factor) for factor in np.linspace(0, 1, n_interpols)]
+    zs = np.array(zs)
+    imgs = ld_gan.utils.model_handler.apply_model(gen, zs)
+    
+    if concat:
+        imgs[0] = img1
+        imgs[-1] = img2
+        img = np.concatenate(imgs, axis=1)
+        return img
+    else:
+        return imgs

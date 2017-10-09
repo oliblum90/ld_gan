@@ -3,7 +3,7 @@ from init_weights import init_weights
 import numpy as np
 import torch.nn.functional as F
 import torch
-    
+
     
 class Dis(nn.Module):
     
