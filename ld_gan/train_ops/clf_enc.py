@@ -24,7 +24,7 @@ class _ClfLayer(nn.Module):
         else:
             self.main = nn.Sequential(
                 nn.Linear(n_features, n_classes),
-                nn.Softmax()
+                #nn.Softmax()
             )
         
         self.main.apply(init_weights)

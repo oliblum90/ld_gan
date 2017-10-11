@@ -23,14 +23,13 @@ if __name__ == "__main__":
         torch.manual_seed(RAND_SEED)
         torch.cuda.manual_seed_all(RAND_SEED)
 
-        SAVE_PATH = "eval_imgs/xf_111v1.py_NEW"
-        N_IMG = 50000
+        SAVE_PATH = "eval_imgs/xf_111v1_split.py_TEST" # HERE!!!
+        N_IMG = 5000 # HERE!!!
         BATCH_SIZE  = 512
-        PROJECT = "xf_111v1.py"
+        PROJECT = "xf_111v1_split.py" # HERE!!!
         EPOCH = 350
 
-
-        X, Y = ld_gan.data_proc.data_loader.load_data(1, verbose=1, resize = 64)
+        X, Y = ld_gan.data_proc.data_loader.load_data(11, resize = 64) # HERE!!!
         n_classes = Y.shape[1]
         Y = np.argmax(Y, axis = 1)
         img_size = X.shape[2]
@@ -41,8 +40,8 @@ if __name__ == "__main__":
 
         sampler = ld_gan.sample.nn_sampler_life(enc, X, Y, 
                                                 BATCH_SIZE, 
-                                                nn_search_radius = 10,
-                                                n_neighbors = 2)
+                                                nn_search_radius = 20,
+                                                n_neighbors = 5)
         
         n_iters = int(N_IMG / BATCH_SIZE) + 1 
         

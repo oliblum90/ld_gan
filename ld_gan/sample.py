@@ -84,14 +84,20 @@ def nn_sampler_life(enc,
                     batch_size, 
                     nn_search_radius = 50, 
                     n_neighbors = 5,
-                    sub_set_size = None):
+                    sub_set_size = None,
+                    img_augmenter = None):
     
     while True:
         
         if sub_set_size is not None:
-            x = X[np.random.randint(0, len(X), sub_set_size)]
+            x_temp_1 = X[np.random.randint(0, len(X), sub_set_size)]
         else:
-            x = X
+            x_temp_1 = X
+        
+        if img_augmenter is not None:
+            x = np.array([img_augmenter(img) for img in x_temp_1.copy()])
+        else:
+            x = x_temp_1
         
         log_time("get_z_enc")
         #z_enc = ld_gan.utils.model_handler.apply_model(enc, x, batch_size=batch_size)
@@ -119,3 +125,21 @@ def nn_sampler_life(enc,
         
         yield x_batch, y_batch, z_batch, batch_idxs, nn_idxs, sr_idxs, z_enc
 
+        
+        
+def img_augmenter(img, max_zoom=0.8, lrflip=True, resize=64):
+    
+        img_size = int(np.random.uniform(max_zoom, 1.0) * img.shape[0])
+        img_pos_x_min = np.random.randint(0, int((1. - max_zoom) * img_size))
+        img_pos_x_max = img_pos_x_min + img_size
+        img_pos_y_min = np.random.randint(0, int((1. - max_zoom) * img_size))
+        img_pos_y_max = img_pos_y_min + img_size
+        img = img[img_pos_x_min:img_pos_x_max, img_pos_y_min:img_pos_y_max]
+        img = scipy.misc.imresize(img, (resize, resize))
+        
+        if 0.5 > np.random.rand():
+            img = np.fliplr(img)
+            
+        return img
+            
+        

@@ -448,7 +448,7 @@ def learning_curve_ia(project,
         fname = os.path.join(path_img, fname)
         img = scipy.misc.imread(fname)
         ax3.imshow(img[0:img.shape[1]], cmap='gray')
-        
+                
         if show_hist_tsne:
             try:
                 fname = os.path.join(path_ht, '0_hist_tsne.png')
@@ -457,7 +457,7 @@ def learning_curve_ia(project,
                 ax4.set_title("hist / tsne")
             except:
                 hts = os.listdir(path_ht)
-                iters = [int(ht_str[:4]) for ht_str in hts]
+                iters = [int(ht_str[:4]) for ht_str in hts if ht_str[0]!='.']
                 idx = np.argmin(np.abs(np.array(iters) - event.xdata))
                 gen_tsne_epoch = iters[idx]
                 fname = str(gen_tsne_epoch).zfill(4) + "_hist_tsne.png"

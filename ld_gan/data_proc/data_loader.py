@@ -11,12 +11,12 @@ PATH_MNIST   = "/export/home/oblum/projects/ls_gan/data/mnist/jpg_32"
 PATH_FLOWER  = "/export/home/oblum/projects/ld_gan/data/flowers_102/jpg_256"
 PATH_CELEBA  = "/export/home/oblum/projects/ld_gan/data/celebA/jpg_64"
 PATH_CELEBA_128 = "/export/home/oblum/projects/ls_gan/data/celebA/jpg_128/faces"
-PATH_FLOWER_17 = "/export/home/oblum/projects/ls_gan/data/flowers_17/jpg_64"
 PATH_BIRDS = "/export/home/oblum/projects/ld_gan/data/birds/images"
+PATH_FLOWER_TR  = "/export/home/oblum/projects/ld_gan/data/flowers_102/jpg_train_256"
+PATH_FLOWER_TE  = "/export/home/oblum/projects/ld_gan/data/flowers_102/jpg_test_256"
+PATH_PETS = "/export/home/oblum/projects/ld_gan/data/pets/cropped"
 
-
-def load_data(path, 
-              index_list = None,
+def load_data(path,
               random_state=42, 
               verbose = 1, 
               n_jobs = 1,
@@ -28,10 +28,16 @@ def load_data(path,
         path = PATH_MNIST
     elif path == 1:
         path = PATH_FLOWER
+    elif path == 10:
+        path = PATH_FLOWER_TR
+    elif path == 11:
+        path = PATH_FLOWER_TE
     elif path == 2:
         path = PATH_CELEBA
     elif path == 3:
         path = PATH_BIRDS
+    elif path == 4:
+        path = PATH_PETS
         
     print "load data from '{}'".format(path)
     
@@ -49,14 +55,8 @@ def load_data(path,
     for idx in iterator:
         
         c = sorted(class_dirs)[idx]
-        
-        if index_list is None:
-            fnames = [os.path.join(c, f) for f in sorted(os.listdir(c))]
-        else:
-            def name2idx(fname):
-                return int(fname[-9:-4])
-            fnames = [os.path.join(c, f) for f in sorted(os.listdir(c)) \
-                                         if name2idx(f) in index_list]
+
+        fnames = [os.path.join(c, f) for f in sorted(os.listdir(c))]
         
         iterator_2 = sorted(fnames)
         if verbose == 2:

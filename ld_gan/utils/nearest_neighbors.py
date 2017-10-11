@@ -2,6 +2,24 @@ import numpy as np
 import torch 
 from torch.autograd import Variable
 import torch.nn.functional as F
+from tqdm import tqdm
+
+
+#def nn_gpu(z_all, z_batch, n_neighbors = 5, return_dist=False, batch_size = None):
+#    
+#    if batch_size is None:
+#        return _nn_gpu(z_all, z_batch, n_neighbors = n_neighbors, return_dist=return_dist)
+#    
+#    else:
+#        print "compute nearest neighbors"
+#        n_batches = len(z_batch) / batch_size
+#        batches = np.array_split(x_flat, n_batches)
+#        idxs = [nn_gpu(z_all, b, n_neighbors = n_neighbors) for b in tqdm(batches)]
+#        idxs = np.concatenate(idxs)
+#        return idxs
+        
+
+
 
 def nn_gpu(z_all, z_batch, n_neighbors = 5, return_dist=False):
     

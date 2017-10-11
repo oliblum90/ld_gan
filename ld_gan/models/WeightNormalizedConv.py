@@ -29,11 +29,11 @@ class _WeightNormalizedConvNd(_ConvNd):
     def weight_norm(self):
         weight_norm = self.weight.pow(2)
         if self.transposed:
-            weight_norm = weight_norm.sum(0)
+            weight_norm = weight_norm.sum(0, keepdim=True)
         else:
-            weight_norm = weight_norm.sum(1)
+            weight_norm = weight_norm.sum(1, keepdim=True)
         for i in range(len(self.kernel_size)):
-            weight_norm = weight_norm.sum(2 + i)
+            weight_norm = weight_norm.sum(2 + i, keepdim=True)
         weight_norm = weight_norm.mul(self.weight_norm_factor).add(1e-6).sqrt()
         return weight_norm
 
