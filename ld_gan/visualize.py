@@ -729,7 +729,8 @@ def tsne_to_interpol_arr(imgs_real,
                          n_neighbors = 5,
                          alpha = 0.003,
                          real_img_mode = "single",
-                         recompute_tsne = False):
+                         recompute_tsne = False, 
+                         nn_within_class = False):
     
     import matplotlib.pylab as plt
     
@@ -771,6 +772,7 @@ def tsne_to_interpol_arr(imgs_real,
     
     ax2.axis('off')
 
+    print y.shape, z_mapped.shape
     ax1.scatter(z_mapped[:, 0], z_mapped[:, 1], c = y[:len(z_mapped)], 
                 s = 10, alpha = alpha, edgecolors='none')
     
@@ -779,12 +781,14 @@ def tsne_to_interpol_arr(imgs_real,
     
     np.save("/tmp/z_mapped.npy", z_mapped)
     np.save("/tmp/f_X.npy", f_X)
+    np.save("/tmp/y.npy", y)
     
     
     def onclick(event):
         
         global arr_img
         
+        y = np.load("/tmp/y.npy")
         z_mapped = np.load("/tmp/z_mapped.npy")
         
         if (event.xdata > 200) or (event.ydata > 200):
@@ -808,11 +812,21 @@ def tsne_to_interpol_arr(imgs_real,
         dists = pairwise_distances(click_pos, z_mapped)
         idx = np.argsort(dists, axis=1)[:, 0]
         z_pos = f_X[idx]
-        dists = pairwise_distances(z_pos, f_X, metric='cosine')
-        idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
-                         
-        imgs = imgs_real[idxs[0]]
-        z_encs = ld_gan.utils.model_handler.apply_model(enc,imgs_real[idxs[0]])
+        
+        y_z = y[idx]
+        
+        if nn_within_class:
+            ax2.set_title(y_z)
+            dists = pairwise_distances(z_pos, f_X[y==y_z], metric='cosine')
+            idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
+            imgs = (imgs_real[y==y_z])[idxs[0]]
+            
+        else:
+            dists = pairwise_distances(z_pos, f_X, metric='cosine')
+            idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
+            imgs = imgs_real[idxs[0]]
+            
+        z_encs = ld_gan.utils.model_handler.apply_model(enc, imgs)
                 
         Z_enc_00 = z_encs[0]
         Z_enc_10 = z_encs[1]
@@ -1271,11 +1285,65 @@ def time_eval(project):
         
     plt.tight_layout()
     plt.show()
+
+    
+def current_speed(project):
+    
+    fname = os.path.join("projects", project, "log/time.txt")
+
+    with open(fname, "r") as f:
+        lines = f.readlines()
+
+    lines = [l for l in lines if l.split()[0] != 'tmp']
+
+    t_dict = {}
+    s_dict = {}
+    for l in lines:
+        s_dict[l.split()[0]] = 0
+        t_dict[l.split()[0]] = 0
+
+    for l in lines:
+        s_dict[l.split()[0]] += 1
+        t_dict[l.split()[0]] += float(l.split()[1])
+
+
+    t_list = []
+    labels = []
+    total = 0
+    for key in s_dict:
+        t_dict[key] = t_dict[key] / s_dict[key]
+        t_list.append(t_dict[key])
+        total += t_dict[key]
+        labels.append(key)
+
+    with open(fname, "r") as f:
+        lines = f.readlines()
+
+    # time seq
+    freq = 0
+    keys = []
+    for l in lines:
+        key = l.split()[0]
+        if key == 'tmp':
+            continue
+        key = l.split()[0]
+        if key not in keys:
+            freq += 1
+        else:
+            break
+        keys.append(key)
+
+
+    ts = [float(t[4:-1]) for t in lines[::freq*2]]
+    t_abs = [ts[i+1]-ts[i] for i in range(len(ts)-1)]
+    mean_t_abs = np.convolve(t_abs, np.ones((50,))/50)
+
+    return np.array(t_abs[-10:]).mean()
     
     
-def gpu(max_last_mod=120, lj=25):
+def gpu(max_last_mod=120):
     
-    print "name".ljust(30), "host".ljust(20), "epoch".ljust(15), "gpu"
+    print "name".ljust(30), "host".ljust(16), "epoch".ljust(25), "gpu"
     print "------------------------------------------------------------------------------"
     
     n_projects_running = 0
@@ -1294,7 +1362,7 @@ def gpu(max_last_mod=120, lj=25):
                     host_name = f.read()
             else:
                 host_name = "-"
-            print host_name.ljust(20),
+            print host_name.ljust(16),
             
             # epoch
             fname = "projects/" + p + "/log/iters_per_epoch"
@@ -1302,7 +1370,21 @@ def gpu(max_last_mod=120, lj=25):
             fname = os.path.join("projects/", p, 'log/logs.txt')
             n_iters = len(np.loadtxt(fname, skiprows=1, delimiter=" "))
             epoch = n_iters / float(iters_per_epoch)
-            print str(np.round(epoch, 2)).ljust(15),
+            print str(np.round(epoch, 2)).ljust(8),
+            
+            # seconds per epoch
+            seconds_per_iter = current_speed(p)
+            t_per_epoch = iters_per_epoch * seconds_per_iter
+            unit = "s"
+            if t_per_epoch > 60:
+                unit = "m"
+                t_per_epoch = t_per_epoch / 60
+            if t_per_epoch > 60:
+                unit = "h"
+                t_per_epoch = t_per_epoch / 60
+            t_per_epoch = str(t_per_epoch)[:4]
+            t_per_epoch = t_per_epoch + " "+ unit + "/epc"
+            print "({})".format(t_per_epoch).ljust(17),
             
             # gpu
             try:

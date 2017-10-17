@@ -11,6 +11,7 @@ import numpy as np
 import sys
 from tqdm import tqdm
 import scipy.misc
+import ld_gan.utils.utils as ld
 
 
 if __name__ == "__main__":
@@ -19,18 +20,29 @@ if __name__ == "__main__":
     
     with torch.cuda.device(gpu_id):
         
-        # load imgs
-        path = "eval_imgs/xf_111v1_split.py/" # HERE
-        fnames = [os.path.join(path, fname) for fname in tqdm(os.listdir(path))]
-        x = [scipy.misc.imread(fname) for fname in tqdm(fnames)]
-        x = np.array(x)
+        for c in range(102):
         
-        X, Y = ld_gan.data_proc.data_loader.load_data(10, resize=64) # HERE
-        
-        Xt, Yt = ld_gan.data_proc.data_loader.load_data(11, resize=64) # HERE
-        Xt = Xt[:250]
-                
-        # create nearest neighbor imgs
-        path = "eval_imgs/nn_missing_mode/flowers/"
-        ld_gan.eval_gan.missing_mode_nn.create_nn_imgs(X, Xt, x, path)
+            # load imgs
+            path_x = "eval_imgs/xf_111v1_split.py_CLASS_RANDWEIGHT/" + str(c).zfill(3)
+            path_X = "data/flowers_102/jpg_train_256/" + str(c+1)
+            path_Xt = "data/flowers_102/jpg_test_256/" + str(c+1)
+
+
+            X, Y = ld_gan.data_proc.data_loader.load_data(path_X, 
+                                                          verbose=0,
+                                                          resize=64, 
+                                                          all_img_in_one_dir=True)
+            Xt, Yt = ld_gan.data_proc.data_loader.load_data(path_Xt, 
+                                                            verbose=0,
+                                                            resize=64, 
+                                                            all_img_in_one_dir=True)
+            x, y = ld_gan.data_proc.data_loader.load_data(path_x, 
+                                                          verbose=2,
+                                                          resize=64, 
+                                                          all_img_in_one_dir=True)
+
+            # create nearest neighbor imgs
+            path = "eval_imgs/nn_missing_mode/flowers_class_randweight/" + str(c)
+            ld.mkdir(path)
+            ld_gan.eval_gan.missing_mode_nn.create_nn_imgs(X, Xt, x, path)
         

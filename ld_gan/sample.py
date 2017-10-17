@@ -80,7 +80,7 @@ def gmm_sampler_life(enc,
         
 def nn_sampler_life(enc, 
                     X, 
-                    y, 
+                    y,
                     batch_size, 
                     nn_search_radius = 50, 
                     n_neighbors = 5,
@@ -125,6 +125,45 @@ def nn_sampler_life(enc,
         
         yield x_batch, y_batch, z_batch, batch_idxs, nn_idxs, sr_idxs, z_enc
 
+
+def same_class_sampler(enc, 
+                       X, 
+                       Y,
+                       batch_size, 
+                       n_neighbors = 5,
+                       img_augmenter = None):
+        
+    while True:
+        
+        
+        log_time("sample")
+        
+        n_classes = int(Y.max() + 1)
+        batch_idxs = np.random.randint(0, len(X), batch_size)
+        
+        x_batch = X[batch_idxs]
+        y_batch = Y[batch_idxs]
+        
+        all_idxs = np.arange(len(X))
+        sr_idxs = [all_idxs[Y==y_batch[s]] for s in range(batch_size)]
+        nn_idxs = [sr_idxs[s][np.random.randint(0, len(sr_idxs[s]), n_neighbors)] \
+                   for s in range(batch_size)]
+        x = X[nn_idxs]
+        x = x.reshape(-1, X.shape[1], X.shape[2], X.shape[3])
+        
+        z_enc = ld_gan.utils.model_handler.apply_models(x, batch_size, enc)
+
+        # get z_batch
+        batch_z_all = z_enc.reshape(-1, n_neighbors, z_enc.shape[-1])
+        rand_weights = np.random.rand(n_neighbors, batch_size)
+        rand_weights = rand_weights / np.sum(rand_weights, axis=0)
+        rand_weights = rand_weights.transpose()
+        z_batch = [np.average(za, 0, w) for w, za in zip(rand_weights, batch_z_all)]
+        z_batch = np.array(z_batch)
+        
+        log_time("sample")
+        
+        yield x_batch, y_batch, z_batch, batch_idxs, nn_idxs, sr_idxs, z_enc
         
         
 def img_augmenter(img, max_zoom=0.8, lrflip=True, resize=64):

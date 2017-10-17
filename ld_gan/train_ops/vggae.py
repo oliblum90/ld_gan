@@ -9,7 +9,8 @@ import ld_gan
     
 class VGGAutoEnc:
     
-    def __init__(self, enc, gen, lr, vgg=None, write_log=True, freq=1):
+    def __init__(self, enc, gen, lr, vgg=None, write_log=True, freq=1, 
+                 weights=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]):
         
         if vgg is None:
             vgg = ld_gan.models.VGG()
@@ -26,6 +27,8 @@ class VGGAutoEnc:
         
         self.opt_enc = optim.Adam(self.enc.parameters(), lr=lr)
         self.opt_gen = optim.Adam(self.gen.parameters(), lr=lr)
+        
+        self.weights = weights
         
         self.write_log = write_log
         self.log_fname = os.path.join("projects", 
@@ -54,7 +57,12 @@ class VGGAutoEnc:
         e3 = self.criterion(c3, C3.detach())
         e4 = self.criterion(c4, C4.detach())
         e5 = self.criterion(c5, C5.detach())
-        err = e0 + e1 + e2 + e3 + e4 + e5
+        err = e0 * self.weights[0] + \
+              e1 * self.weights[1] + \
+              e2 * self.weights[2] + \
+              e3 * self.weights[3] + \
+              e4 * self.weights[4] + \
+              e5 * self.weights[5]
         err.backward()
         self.opt_enc.step()
         self.opt_gen.step()

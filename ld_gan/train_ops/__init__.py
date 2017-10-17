@@ -12,6 +12,7 @@ from infogan_dis import InfoDis
 from infogan_gen import InfoGen
 from vggae import VGGAutoEnc
 from triplet_enc import TripletEnc
+from clf_gen import GenCLF
 import triplet_enc
 import entropy_enc
 from entropy_enc import EntropyEnc

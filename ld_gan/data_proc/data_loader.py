@@ -15,12 +15,15 @@ PATH_BIRDS = "/export/home/oblum/projects/ld_gan/data/birds/images"
 PATH_FLOWER_TR  = "/export/home/oblum/projects/ld_gan/data/flowers_102/jpg_train_256"
 PATH_FLOWER_TE  = "/export/home/oblum/projects/ld_gan/data/flowers_102/jpg_test_256"
 PATH_PETS = "/export/home/oblum/projects/ld_gan/data/pets/cropped"
+PATH_FS_1 = "/export/home/oblum/projects/ld_gan/data/faceScrub/imgs/"
+PATH_FS_2 = "/export/home/oblum/projects/ld_gan/data/faceScrub/crop/"
 
 def load_data(path,
               random_state=42, 
               verbose = 1, 
               n_jobs = 1,
-              resize = None):
+              resize = None,
+              all_img_in_one_dir=False):
     
     if path == -1:
         path = PATH_FLOWER_17
@@ -38,10 +41,18 @@ def load_data(path,
         path = PATH_BIRDS
     elif path == 4:
         path = PATH_PETS
+    elif path == 51:
+        path = PATH_FS_1
+    elif path == 52:
+        path = PATH_FS_2        
         
     print "load data from '{}'".format(path)
     
-    class_dirs = [os.path.join(path, c) for c in os.listdir(path)]
+    if all_img_in_one_dir:
+        class_dirs = [path]
+    else:
+        class_dirs = [os.path.join(path, c) for c in os.listdir(path)]
+    
     n_classes = len(class_dirs) + 1
     
     X = []

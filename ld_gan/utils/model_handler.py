@@ -12,19 +12,20 @@ def load_model(project, epoch, model_name, test_mode = True):
         if "DataParallel" in str(model):
             model = load_parallel_model(project, epoch, model_name, test_mode = test_mode)
         
-    except:
+    except Exception as e:
+        print e
         model =  _load_model_with_different_gpu_id(project, epoch, model_name, 
                                                    test_mode = test_mode)
     if model is None:
-        "print NO MODEL LOADED!!!"
-    
+        print "NO MODEL LOADED!!!"
+        
     model.cuda()
     
     return model
 
 def _load_model_with_different_gpu_id(project, epoch, model_name, test_mode = True):
     
-    for i in range(8):
+    for i in range(10):
         try:
             epoch_str = str(epoch).zfill(4)
             fname = "projects/" + project + "/model/" + model_name[0] + "_" + epoch_str + ".pth"

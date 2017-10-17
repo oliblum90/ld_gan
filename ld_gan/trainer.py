@@ -3,12 +3,14 @@ from tqdm import tqdm
 import numpy as np
 import torch
 import ld_gan
+import shutil
 
 import visualize
 from data_proc.transformer import np_to_tensor, tensor_to_np
 from utils.init_project import init_project, save_setup
 from ld_gan.utils.log_time import log_time
 from ld_gan.utils.logging import remove_nans, log_host_name
+import __main__ as main
 
 class Trainer:
     
@@ -26,18 +28,19 @@ class Trainer:
                  gen_img_step      = 5,
                  gen_tsne_step     = 10,
                  save_model_step   = 50,
+                 gen_iscore_step   = 100,
                  bs_tsne_pts       = None,
                  callbacks         = [],
                  gpu_id            = None):
         
         # set class variables
         if project_name is None:
-            import __main__ as main
             project_name =  os.path.join("projects", main.__file__)
         self.project_name     = project_name
         self._path_log        = os.path.join(project_name, "log")
         self._path_model      = os.path.join(project_name, "model")
         self._path_gen_img    = os.path.join(project_name, "generated_img")
+        self._path_incpt_imgs = os.path.join(project_name, "incept_imgs")
         self._path_hist_tsne  = os.path.join(project_name, "hist_tsne")
         
         self.gen = gen
@@ -51,6 +54,7 @@ class Trainer:
         self._gen_img_step    = gen_img_step
         self._gen_tsne_step   = gen_tsne_step
         self._save_model_step = save_model_step
+        self._gen_iscore_step = gen_iscore_step
         self.n_samples        = n_samples
         self.n_epochs         = n_epochs
         self.batch_size       = batch_size
@@ -66,6 +70,7 @@ class Trainer:
         init_project(self._path_model)
         init_project(self._path_gen_img)
         init_project(self._path_hist_tsne)
+        init_project(self._path_incpt_imgs)
         
         # init log
         self._init_log()
@@ -85,19 +90,24 @@ class Trainer:
         torch.save(self.dis, os.path.join(self._path_model, "dis.pth"))
         torch.save(self.enc, os.path.join(self._path_model, "enc.pth"))
         
-        
-    def _init_log(self):
-        
-        fname = os.path.join(self._path_log, "logs.txt")
-        header = " ".join([to.__class__.__name__ for to in self.train_ops])
-        with open(fname, 'w') as f:
-            f.write(header)
+        # init iscore model
+        self.i_score = ld_gan.eval_gan.InceptionScore()
+        self.i_score_list = []
         
         
-    def _write_log(self, losses):
+    def _init_log(self, log_name = "logs.txt"):
+        
+        fname = os.path.join(self._path_log, log_name)
+        if not os.path.isfile(fname):
+            header = " ".join([to.__class__.__name__ for to in self.train_ops])
+            with open(fname, 'w') as f:
+                f.write(header)
+        
+        
+    def _write_log(self, losses, log_name = "logs.txt"):
         
         self.epoch_losses.append(losses)
-        fname = os.path.join(self._path_log, "logs.txt")
+        fname = os.path.join(self._path_log, log_name)
         line = " ".join([str(l) for l in losses])
         with open(fname, 'a') as f:
             f.write("\n" + line)
@@ -172,6 +182,40 @@ class Trainer:
                                      project = self.project_name,
                                      epoch_str = e_str)
         
+                
+    def get_inception_score(self, n_samples=50000):
+        
+        print "generate incept score samples..."
+        n_iters = int((n_samples / self.batch_size) + 1)
+        imgs = []
+        ys = []
+        for it in tqdm(range(n_iters)):
+            _, Y, Z, _, _, _, _ = self.sampler.next()
+            imgs.append(ld_gan.utils.model_handler.apply_model(self.gen, Z))
+            ys.append(Y)
+        imgs = np.concatenate(imgs)
+        ys = np.concatenate(ys)
+        
+        print "compute inception score..."
+        score = self.i_score.score(imgs, batch_size=32)
+        self.i_score_list.append(score)
+        self._init_log(log_name = "iscore.txt")
+        self._write_log([score], log_name = "iscore.txt")
+        print "score: {}".format(score)
+        
+        if max(self.i_score_list) == score:
+            
+            print "delete old incept imgs..."
+            shutil.rmtree(self._path_incpt_imgs)
+            
+            print "save new incept imgs..."
+            os.mkdir(self._path_incpt_imgs)
+            for idx in range(len(imgs)):
+                fname = str(idx).zfill(6) + "_" + str(ys[idx]).zfill(3) + ".jpg"
+                fname = os.path.join(self._path_incpt_imgs, fname)
+                scipy.misc.imsave(fname, imgs[idx])
+                
+            
         
     def _show_training_status(self, epoch):
         
@@ -181,7 +225,7 @@ class Trainer:
         names = [to.__class__.__name__ for to in self.train_ops]
         names = [n.ljust(10) for n in names]
         
-        print "EPOCH: {}".format(epoch)
+        print "EPOCH: {}, ({})".format(epoch, main.__file__)
         print "--------------------------------------------------------"
         for l, n in zip(losses, names):
             print n, ": ", l
@@ -215,6 +259,10 @@ class Trainer:
                 if epoch % cb.run_every_nth_epoch == 0:
                     cb.run()
             
+            # save inception score
+            if epoch % self._gen_iscore_step == 0:
+                self.get_inception_score()
+            
             # save generated imgs
             if epoch % self._gen_img_step == 0: 
                 self.generate_imgs(fname = e_str)
@@ -224,7 +272,7 @@ class Trainer:
                 self.save_tsne_hist(e_str)
 
             # save model
-            if epoch % self._save_model_step == 0:
+            if (epoch % self._save_model_step == 0) and epoch > 0:
                 self.save_model(e_str)
     
     
