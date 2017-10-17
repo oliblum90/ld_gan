@@ -85,6 +85,7 @@ def nn_sampler_life(enc,
                     nn_search_radius = 50, 
                     n_neighbors = 5,
                     sub_set_size = None,
+                    same_class = False,
                     img_augmenter = None):
     
     while True:
@@ -106,9 +107,25 @@ def nn_sampler_life(enc,
         
         batch_idxs = np.random.randint(0, len(z_enc), batch_size)
         
+        x_batch = x[batch_idxs]
+        y_batch = y[batch_idxs]
+        
         log_time("find_nn")
-        sr_idxs = nn_gpu(z_enc, z_enc[batch_idxs], n_neighbors=nn_search_radius)
-        nn_idxs = [i[np.random.randint(0, nn_search_radius, n_neighbors)] for i in sr_idxs]
+        
+        # get surrounding
+        sr_idxs = []
+        if same_class:
+            sorted_idxs = nn_gpu(z_enc, z_enc[batch_idxs], n_neighbors=None)
+            for i in range(len(sorted_idxs)):
+                iidxs = np.where(y[sorted_idxs[i]] == y_batch[i])[0]
+                sr_idxs.append(sorted_idxs[i][iidxs][:nn_search_radius])
+                
+        else:
+            sr_idxs = nn_gpu(z_enc, z_enc[batch_idxs], n_neighbors=nn_search_radius)
+        
+        # get nearest neighbors
+        nn_idxs = [i[np.random.randint(0, len(i), n_neighbors)] for i in sr_idxs]
+        
         log_time("find_nn")
 
         # get z_batch
@@ -119,8 +136,6 @@ def nn_sampler_life(enc,
         z_batch = [np.average(za, 0, w) for w, za in zip(rand_weights, batch_z_all)]
         z_batch = np.array(z_batch)
         
-        x_batch = x[batch_idxs]
-        y_batch = y[batch_idxs]
         z_batch_orig = z_enc[batch_idxs]
         
         yield x_batch, y_batch, z_batch, batch_idxs, nn_idxs, sr_idxs, z_enc

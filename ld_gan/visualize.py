@@ -1352,50 +1352,56 @@ def gpu(max_last_mod=120):
         t = time.time() - os.path.getmtime(fname)
         if  t < max_last_mod:
             
-            # process name
-            print p.ljust(30),
-            
-            # host name
-            fname = os.path.join("projects", p, "log/host_name.txt")
-            if os.path.isfile(fname):
-                with open(fname, 'r') as f:
-                    host_name = f.read()
-            else:
-                host_name = "-"
-            print host_name.ljust(16),
-            
-            # epoch
-            fname = "projects/" + p + "/log/iters_per_epoch"
-            iters_per_epoch = float(np.loadtxt(fname))
-            fname = os.path.join("projects/", p, 'log/logs.txt')
-            n_iters = len(np.loadtxt(fname, skiprows=1, delimiter=" "))
-            epoch = n_iters / float(iters_per_epoch)
-            print str(np.round(epoch, 2)).ljust(8),
-            
-            # seconds per epoch
-            seconds_per_iter = current_speed(p)
-            t_per_epoch = iters_per_epoch * seconds_per_iter
-            unit = "s"
-            if t_per_epoch > 60:
-                unit = "m"
-                t_per_epoch = t_per_epoch / 60
-            if t_per_epoch > 60:
-                unit = "h"
-                t_per_epoch = t_per_epoch / 60
-            t_per_epoch = str(t_per_epoch)[:4]
-            t_per_epoch = t_per_epoch + " "+ unit + "/epc"
-            print "({})".format(t_per_epoch).ljust(17),
-            
-            # gpu
             try:
-                fname = "projects/" + p + "/log/gpu_id.txt"
-                gpu_idx = int(np.loadtxt(fname))
-                print gpu_idx,
-            except:
-                pass
             
-            print " "
-            n_projects_running += 1
+                # process name
+                print p.ljust(30),
+
+                # host name
+                fname = os.path.join("projects", p, "log/host_name.txt")
+                if os.path.isfile(fname):
+                    with open(fname, 'r') as f:
+                        host_name = f.read()
+                else:
+                    host_name = "-"
+                print host_name.ljust(16),
+
+                # epoch
+                fname = "projects/" + p + "/log/iters_per_epoch"
+                iters_per_epoch = float(np.loadtxt(fname))
+                fname = os.path.join("projects/", p, 'log/logs.txt')
+                n_iters = len(np.loadtxt(fname, skiprows=1, delimiter=" "))
+                epoch = n_iters / float(iters_per_epoch)
+                print str(np.round(epoch, 2)).ljust(8),
+
+                # seconds per epoch
+                seconds_per_iter = current_speed(p)
+                t_per_epoch = iters_per_epoch * seconds_per_iter
+                unit = "s"
+                if t_per_epoch > 60:
+                    unit = "m"
+                    t_per_epoch = t_per_epoch / 60
+                if t_per_epoch > 60:
+                    unit = "h"
+                    t_per_epoch = t_per_epoch / 60
+                t_per_epoch = str(t_per_epoch)[:4]
+                t_per_epoch = t_per_epoch + " "+ unit + "/epc"
+                print "({})".format(t_per_epoch).ljust(17),
+
+                # gpu
+                try:
+                    fname = "projects/" + p + "/log/gpu_id.txt"
+                    gpu_idx = int(np.loadtxt(fname))
+                    print gpu_idx,
+                except:
+                    pass
+
+                print " "
+                n_projects_running += 1
+                
+            except:
+                print " "
+                
     print "------------------------------------------------------------------------------"
     print "\n"
     print "{} projects running".format(n_projects_running)

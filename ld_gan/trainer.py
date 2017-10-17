@@ -272,7 +272,7 @@ class Trainer:
                 self.save_tsne_hist(e_str)
 
             # save model
-            if (epoch % self._save_model_step == 0) and epoch > 0:
+            if (epoch % self._save_model_step == 0) and (epoch > 1):
                 self.save_model(e_str)
     
     
