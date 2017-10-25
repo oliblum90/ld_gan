@@ -119,6 +119,7 @@ def nn_sampler_life(enc,
             for i in range(len(sorted_idxs)):
                 iidxs = np.where(y[sorted_idxs[i]] == y_batch[i])[0]
                 sr_idxs.append(sorted_idxs[i][iidxs][:nn_search_radius])
+            sr_idxs = np.array(sr_idxs)
                 
         else:
             sr_idxs = nn_gpu(z_enc, z_enc[batch_idxs], n_neighbors=nn_search_radius)
@@ -138,8 +139,81 @@ def nn_sampler_life(enc,
         
         z_batch_orig = z_enc[batch_idxs]
         
-        yield x_batch, y_batch, z_batch, batch_idxs, nn_idxs, sr_idxs, z_enc
+        yield x_batch, y_batch, z_batch, batch_idxs, nn_idxs, sr_idxs, z_enc, rand_weights
 
+        
+        
+        
+        
+        
+        
+def nn_sampler_scs(enc, 
+                   X, 
+                   y,
+                   batch_size, 
+                   nn_search_radius = 50, 
+                   n_neighbors = 5,
+                   sub_set_size = None,
+                   img_augmenter = None):
+    
+    latent_size = int(str(enc).split("Conv2d")[-1].split(", ")[1])
+    
+    while True:
+        
+        if sub_set_size is not None:
+            x_temp_1 = X[np.random.randint(0, len(X), sub_set_size)]
+        else:
+            x_temp_1 = X
+        
+        if img_augmenter is not None:
+            x = np.array([img_augmenter(img) for img in x_temp_1.copy()])
+        else:
+            x = x_temp_1
+        
+        batch_idxs = np.random.randint(0, len(x), batch_size)
+        
+        x_batch = x[batch_idxs]
+        y_batch = y[batch_idxs]
+        
+        log_time("get_z_enc")
+        z_enc = np.zeros((len(x), latent_size))
+        i_y = np.concatenate([np.where(y==c)[0] for c in np.unique(y_batch)])
+        z_enc[i_y] = ld_gan.utils.model_handler.apply_models(x[i_y], batch_size, enc)
+        log_time("get_z_enc")
+        
+        log_time("find_nn")
+        
+        # get surrounding
+        sr_idxs = []
+        sorted_idxs = nn_gpu(z_enc, z_enc[batch_idxs], n_neighbors=None)
+        for i in range(len(sorted_idxs)):
+            iidxs = np.where(y[sorted_idxs[i]] == y_batch[i])[0]
+            sr_idxs.append(sorted_idxs[i][iidxs][:nn_search_radius])
+        sr_idxs = np.array(sr_idxs)
+
+        # get nearest neighbors
+        nn_idxs = [i[np.random.randint(0, len(i), n_neighbors)] for i in sr_idxs]
+        
+        log_time("find_nn")
+
+        # get z_batch
+        batch_z_all = z_enc[nn_idxs]
+        rand_weights = np.random.rand(n_neighbors, batch_size)
+        rand_weights = rand_weights / np.sum(rand_weights, axis=0)
+        rand_weights = rand_weights.transpose()
+        z_batch = [np.average(za, 0, w) for w, za in zip(rand_weights, batch_z_all)]
+        z_batch = np.array(z_batch)
+        
+        z_batch_orig = z_enc[batch_idxs]
+        
+        yield x_batch, y_batch, z_batch, batch_idxs, nn_idxs, sr_idxs, z_enc, rand_weights
+
+        
+        
+        
+        
+        
+        
 
 def same_class_sampler(enc, 
                        X, 
@@ -178,7 +252,7 @@ def same_class_sampler(enc,
         
         log_time("sample")
         
-        yield x_batch, y_batch, z_batch, batch_idxs, nn_idxs, sr_idxs, z_enc
+        yield x_batch, y_batch, z_batch, batch_idxs, nn_idxs, sr_idxs, z_enc, rand_weights
         
         
 def img_augmenter(img, max_zoom=0.8, lrflip=True, resize=64):

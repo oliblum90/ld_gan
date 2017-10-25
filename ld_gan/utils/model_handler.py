@@ -4,7 +4,7 @@ import torch
 import numpy as np
 
 
-def load_model(project, epoch, model_name, test_mode = True):
+def load_model(project, epoch, model_name, test_mode = True, to_gpu=0):
     
     try:
         model = _load_model(project, epoch, model_name, test_mode = test_mode)
@@ -15,28 +15,58 @@ def load_model(project, epoch, model_name, test_mode = True):
     except Exception as e:
         print e
         model =  _load_model_with_different_gpu_id(project, epoch, model_name, 
-                                                   test_mode = test_mode)
+                                                   test_mode = test_mode, to_gpu = to_gpu)
     if model is None:
         print "NO MODEL LOADED!!!"
-        
-    model.cuda()
     
     return model
 
-def _load_model_with_different_gpu_id(project, epoch, model_name, test_mode = True):
+def _load_model_with_different_gpu_id(project, 
+                                      epoch, 
+                                      model_name, 
+                                      test_mode = True,  
+                                      to_gpu=0):
     
     for i in range(10):
         try:
             epoch_str = str(epoch).zfill(4)
-            fname = "projects/" + project + "/model/" + model_name[0] + "_" + epoch_str + ".pth"
+            fname = "projects/"+project+"/model/"+model_name[0]+"_"+epoch_str+".pth"
             model = torch.load(fname, map_location={'cuda:'+str(i):'cuda:0'})
             
             print "found gpu mapping: ", {'cuda:'+str(i):'cuda:0'}
             print "loaded model '{}'".format(fname)
             
-            if test_mode:
-                model.eval()
+            #if test_mode:
+            #    model.eval()
             
+            #model.cuda()
+        
+            #try:
+            #    if model_name == "enc":
+            #        m = ld_gan.models.enc.Enc(n_features = 512, ipt_size=128)
+            #    elif model_name == "gen":
+            #        m = ld_gan.models.gen.Gen(latent_size = 512, ipt_size=128)
+            #    elif model_name == "dis":
+            #        m = ld_gan.models.dis.Dis(ipt_size=128)
+            #        
+            #except:
+            #    if model_name == "enc":
+            #        m = ld_gan.models.enc.Enc(n_features = 512, ipt_size=64)
+            #    elif model_name == "gen":
+            #        m = ld_gan.models.gen.Gen(latent_size = 512, ipt_size=64)
+            #    elif model_name == "dis":
+            #        m = ld_gan.models.dis.Dis(ipt_size=64)
+            #        
+            #sd = model.state_dict()
+            #m.load_state_dict(sd)
+            #
+            #if test_mode:
+            #    m.eval()
+                
+            #m.cuda()
+            
+            #return m
+        
             return model
         
         except:
@@ -54,7 +84,9 @@ def _load_model(project, epoch, model_name, test_mode = True):
         
     if test_mode:
         model.eval()
-        
+    
+    model.cuda()
+    
     print "loaded model '{}'".format(fname)
         
     return model
@@ -81,6 +113,8 @@ def load_parallel_model(project, epoch, model_name, test_mode = True):
     
     if test_mode:
         model.eval()
+    
+    model.cuda()
     
     return model
     
@@ -151,3 +185,24 @@ def get_interpol_imgs(enc, gen,
         return img
     else:
         return imgs
+
+    
+    
+def load_model_with_different_gpu_id(fname, test_mode=True):
+    
+    for i in range(10):
+        try:
+            model = torch.load(fname, map_location={'cuda:'+str(i):'cuda:0'})
+            
+            print "found gpu mapping: ", {'cuda:'+str(i):'cuda:0'}
+            print "loaded model '{}'".format(fname)
+            
+            if test_mode:
+                model.eval()
+            
+            model.cuda()
+        
+            return model
+        
+        except:
+            pass

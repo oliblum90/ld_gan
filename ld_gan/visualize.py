@@ -14,6 +14,7 @@ import ld_gan
 import datetime
 import time
 from tqdm import tqdm
+import ld_gan.utils.utils as ld
 
 
 
@@ -726,7 +727,7 @@ def tsne_to_interpol_arr(imgs_real,
                          z_mapped = None, 
                          sampler = None,
                          n_pts_tsne = 4000,
-                         n_neighbors = 5,
+                         n_neighbors = 4,
                          alpha = 0.003,
                          real_img_mode = "single",
                          recompute_tsne = False, 
@@ -801,7 +802,8 @@ def tsne_to_interpol_arr(imgs_real,
             if os.path.isdir(path) == False:
                 os.mkdir(path)
             idx = len(os.listdir(path))
-            fname = os.path.join(path, str(idx) + ".png")
+            idx_orig = str(np.genfromtxt("/tmp/idxs_orig.txt", dtype='str'))
+            fname = os.path.join(path, str(idx) + idx_orig + ".png")
             scipy.misc.imsave(fname, arr_img)
             ax2.set_title("saved img {}".format(fname))
             return
@@ -819,15 +821,27 @@ def tsne_to_interpol_arr(imgs_real,
             ax2.set_title(y_z)
             dists = pairwise_distances(z_pos, f_X[y==y_z], metric='cosine')
             idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
+            idxs = idxs[np.random.randint(0, len(idxs), 4)]
             imgs = (imgs_real[y==y_z])[idxs[0]]
             
+            ax1.set_title(2)
+            idx_orig = str(np.where(y==y_z)[0][idxs[0]])
+            np.savetxt("/tmp/idxs_orig.txt", np.array([idx_orig]), fmt="%s")
+            ax2.set_title(idx_orig)     
+            
         else:
+            ax2.set_title(y_z)
             dists = pairwise_distances(z_pos, f_X, metric='cosine')
             idxs = np.argsort(dists, axis=1)[:, :n_neighbors]
+            idxs = idxs[np.random.randint(0, len(idxs), 4)]
             imgs = imgs_real[idxs[0]]
-            
+            ax1.set_title(1)
+        
+        
+        ax1.set_title(3)
         z_encs = ld_gan.utils.model_handler.apply_model(enc, imgs)
-                
+        
+        ax1.set_title(4)
         Z_enc_00 = z_encs[0]
         Z_enc_10 = z_encs[1]
         Z_enc_01 = z_encs[2]
@@ -880,6 +894,140 @@ def tsne_to_interpol_arr(imgs_real,
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
     
     
+
+    
+    
+    
+def make_corner_img(imgs, enc, gen, n_imgs=5, all_fake=False):
+
+    z_encs = ld_gan.utils.model_handler.apply_model(enc, imgs)
+
+    Z_enc_00 = z_encs[0]
+    Z_enc_10 = z_encs[1]
+    Z_enc_01 = z_encs[2]
+    Z_enc_11 = z_encs[3]
+
+    img_size = imgs[0].shape[1]
+    arr_img = np.zeros((img_size * n_imgs, img_size * n_imgs, 3))
+
+    for x in range(n_imgs):
+        for y in range(n_imgs):
+
+            x_factor = x / float(n_imgs-1.)
+            y_factor = y / float(n_imgs-1.)
+
+
+            z_00_factor = (1. - x_factor) * (1. - y_factor)
+            z_10_factor = (x_factor) * (1. - y_factor)
+            z_01_factor = (1. - x_factor) * (y_factor)
+            z_11_factor = (x_factor) * (y_factor)
+
+            z_enc = Z_enc_00 * z_00_factor + \
+                    Z_enc_10 * z_10_factor + \
+                    Z_enc_01 * z_01_factor + \
+                    Z_enc_11 * z_11_factor
+
+            z_enc = np.array([z_enc])
+
+            img_fake = ld_gan.utils.model_handler.apply_model(gen, z_enc)
+
+            pos_x_min = x * img_size
+            pos_x_max = (x+1) * img_size
+            pos_y_min = y * img_size
+            pos_y_max = (y+1) * img_size
+
+            arr_img[pos_x_min:pos_x_max, pos_y_min:pos_y_max] = img_fake
+
+    if all_fake == False:
+        arr_img[:img_size, :img_size] = imgs[0]
+        arr_img[:img_size, -img_size:] = imgs[2]
+        arr_img[-img_size:, :img_size] = imgs[1]
+        arr_img[-img_size:, -img_size:] = imgs[3]
+
+    arr_img = arr_img.astype('uint8')
+    
+    return arr_img
+    
+
+def make_corner_imgs(project, epoch, resize=64, save=False):
+    
+    idxs_train = [[432,  351,  337,  448],
+                  [958,  911,  984,  910],
+                  [604,  597,  591,  592],
+                  [517,  484,  561,  498],
+                  [506,  539,  509,  523],
+                  [7228, 7155, 7173, 7227],
+                  [2694, 2723, 2665, 2733],
+                  [3250, 3269, 3241, 3210],
+                  [1569, 1549, 1483, 1506],
+                  [102, 87, 48, 84]]
+    
+    idxs_test = [[983, 986, 974, 978],
+                 [601, 596, 594, 588],
+                 [313, 314, 315, 319],
+                 [59,  55,  52,  66],
+                 [29,  34,  30,  31], 
+                 [3855, 3857, 3853, 3850],
+                 [2986, 2983, 2976, 2974],
+                 [2637, 2634, 2628, 2638],
+                 [841, 838, 844, 840]]
+
+    fnames = sorted(ld.listdir("data/faceScrub/imgs_top_aligned/", ".jpg", True))
+    fnames_test = [fname for fname in fnames if "_test" in fname]
+    fnames_train = [fname for fname in fnames if "_test" not in fname]
+    fnames_test = np.array(fnames_test)
+    fnames_train = np.array(fnames_train)
+    
+    if epoch is None:
+        models = os.listdir("projects/" + project + "/model/")
+        epochs = [int(m[2:-4]) for m in models if "d_" in m]
+    else:
+        epochs = [epoch]
+    
+    for epoch in epochs:
+        
+        enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+        gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+        
+    
+        train_imgs = []
+        for idxs in idxs_train:
+            fnames = fnames_train[np.array(idxs)]
+            imgs = [scipy.misc.imread(fname) for fname in fnames]
+            imgs = np.array([scipy.misc.imresize(img, (resize,resize)) for img in imgs])
+            c_img = make_corner_img(imgs, enc, gen)
+            train_imgs.append(c_img)
+
+        test_imgs = []
+        for idxs in idxs_test:
+            fnames = fnames_test[np.array(idxs)]
+            imgs = [scipy.misc.imread(fname) for fname in fnames]
+            imgs = np.array([scipy.misc.imresize(img, (resize,resize)) for img in imgs])
+            c_img = make_corner_img(imgs, enc, gen)
+            test_imgs.append(c_img)
+
+
+        if save:
+
+            for i, img in enumerate(test_imgs):
+                path = os.path.join("projects", 
+                                    project, 
+                                    "interpol_arr", 
+                                    "test_E" + str(epoch).zfill(3))
+                ld.mkdir(path)
+                fname = os.path.join(path, str(i) + ".jpg")
+                scipy.misc.imsave(fname, img)
+
+            for i, img in enumerate(train_imgs):
+                path = os.path.join("projects", 
+                                    project, 
+                                    "interpol_arr", 
+                                    "train_E" + str(epoch).zfill(3))
+                ld.mkdir(path)
+                fname = os.path.join(path, str(i) + ".jpg")
+                scipy.misc.imsave(fname, img)                 
+        else:
+            return train_imgs, test_imgs
     
     
     
@@ -1564,8 +1712,80 @@ def pre_compute_tsne(project, imgs_real, n_pts_tsne=4000, epochs=None):
             np.save(fname, z_mapped)
     
     
+def generate_corner_imgs(project, epoch, path_scr, path_dst = None,
+                         resize=64, n_imgs=5, all_fake=False):
+    
+    enc = ld_gan.utils.model_handler.load_model(project, epoch, "enc")
+    gen = ld_gan.utils.model_handler.load_model(project, epoch, "gen")
+    
+    if path_dst is None:
+        path_dst = os.path.join("projects", project, "interpol_arr")
+        try:
+            os.mkdir(path_dst)
+        except:
+            pass
     
     
-    
-    
-    
+    for scr in tqdm(sorted(os.listdir(path_scr))):
+        
+        p = os.path.join(path_scr, scr)
+        fnames = [os.path.join(p,n) for n in os.listdir(p)]
+        imgs = [scipy.misc.imread(fname) for fname in fnames][:4]
+        imgs = np.array([scipy.misc.imresize(img, (resize, resize)) for img in imgs])
+        z_encs = ld_gan.utils.model_handler.apply_model(enc, imgs)
+                
+        Z_enc_00 = z_encs[0]
+        Z_enc_10 = z_encs[1]
+        Z_enc_01 = z_encs[2]
+        Z_enc_11 = z_encs[3]
+                
+        img_size = imgs.shape[1]
+        arr_img = np.zeros((img_size * n_imgs, img_size * n_imgs, 3))
+                
+        for x in range(n_imgs):
+            for y in range(n_imgs):
+                                
+                x_factor = x / float(n_imgs-1.)
+                y_factor = y / float(n_imgs-1.)
+                
+                
+                z_00_factor = (1. - x_factor) * (1. - y_factor)
+                z_10_factor = (x_factor) * (1. - y_factor)
+                z_01_factor = (1. - x_factor) * (y_factor)
+                z_11_factor = (x_factor) * (y_factor)
+                                
+                z_enc = Z_enc_00 * z_00_factor + \
+                        Z_enc_10 * z_10_factor + \
+                        Z_enc_01 * z_01_factor + \
+                        Z_enc_11 * z_11_factor
+                
+                z_enc = np.array([z_enc])
+                
+                img_fake = ld_gan.utils.model_handler.apply_model(gen, z_enc)
+                        
+                pos_x_min = x * img_size
+                pos_x_max = (x+1) * img_size
+                pos_y_min = y * img_size
+                pos_y_max = (y+1) * img_size
+                
+                arr_img[pos_x_min:pos_x_max, pos_y_min:pos_y_max] = img_fake
+                
+        if all_fake == False:
+            arr_img[:img_size, :img_size] = imgs[0]
+            arr_img[:img_size, -img_size:] = imgs[2]
+            arr_img[-img_size:, :img_size] = imgs[1]
+            arr_img[-img_size:, -img_size:] = imgs[3]
+        
+        arr_img = arr_img.astype('uint8')
+        
+        
+        path_dst_epoch = os.path.join(path_dst, str(epoch))
+        try:
+            os.mkdir(path_dst_epoch)
+        except:
+            pass
+        
+        fname = os.path.join(path_dst_epoch, scr + ".jpg")
+        scipy.misc.imsave(fname, arr_img)
+        
+        

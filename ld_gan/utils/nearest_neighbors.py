@@ -47,3 +47,22 @@ def nn_gpu(z_all, z_batch, n_neighbors = 5, return_dist=False):
         return torch.ones_like(dists) - dists
     
     return idxs
+
+
+
+
+
+def nn_cpu(z_all, z_batch, n_neighbors = 5, return_dist=False):
+    
+    z_all_n = z_all/np.linalg.norm(z_all, axis=1).reshape(-1,1)
+    z_batch_n = z_batch/np.linalg.norm(z_batch, axis=1)
+    dists = z_batch_n.dot(z_all_n.transpose())
+    
+    if n_neighbors is None:
+        idxs = np.argsort(dists, axis=1)[:,::-1]
+    else:
+        idxs = np.argsort(dists, axis=1)[:, -n_neighbors:][:,::-1]
+    
+    return idxs
+
+

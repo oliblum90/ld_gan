@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import ld_gan
 import shutil
+import scipy.misc
 
 import visualize
 from data_proc.transformer import np_to_tensor, tensor_to_np
@@ -95,19 +96,18 @@ class Trainer:
         self.i_score_list = []
         
         
-    def _init_log(self, log_name = "logs.txt"):
+    def _init_log(self):
         
-        fname = os.path.join(self._path_log, log_name)
-        if not os.path.isfile(fname):
-            header = " ".join([to.__class__.__name__ for to in self.train_ops])
-            with open(fname, 'w') as f:
-                f.write(header)
+        fname = os.path.join(self._path_log, "logs.txt")
+        header = " ".join([to.__class__.__name__ for to in self.train_ops])
+        with open(fname, 'w') as f:
+            f.write(header)
         
         
-    def _write_log(self, losses, log_name = "logs.txt"):
+    def _write_log(self, losses):
         
         self.epoch_losses.append(losses)
-        fname = os.path.join(self._path_log, log_name)
+        fname = os.path.join(self._path_log, "logs.txt")
         line = " ".join([str(l) for l in losses])
         with open(fname, 'a') as f:
             f.write("\n" + line)
@@ -133,7 +133,7 @@ class Trainer:
         
         print "generate test imgs..."
         
-        X, Y, Z, _, _, _, _ = self.sampler.next()
+        X, Y, Z, _, _, _, _, _ = self.sampler.next()
         
         Z_exact = ld_gan.utils.model_handler.apply_model(self.enc, X)
         x = ld_gan.utils.model_handler.apply_model(self.gen, Z)
@@ -163,7 +163,7 @@ class Trainer:
         f_vecs, imgs = [], []
         ys = []
         for step in range(n_iters):
-            X, Y, Z, _, _, _, _ = self.sampler.next()
+            X, Y, Z, _, _, _, _, _ = self.sampler.next()
             f_vecs.append(Z)
             imgs.append(X)
             ys.append(Y)
@@ -183,14 +183,14 @@ class Trainer:
                                      epoch_str = e_str)
         
                 
-    def get_inception_score(self, n_samples=50000):
+    def get_inception_score(self, e_str, n_samples=50000):
         
         print "generate incept score samples..."
         n_iters = int((n_samples / self.batch_size) + 1)
         imgs = []
         ys = []
         for it in tqdm(range(n_iters)):
-            _, Y, Z, _, _, _, _ = self.sampler.next()
+            _, Y, Z, _, _, _, _, _ = self.sampler.next()
             imgs.append(ld_gan.utils.model_handler.apply_model(self.gen, Z))
             ys.append(Y)
         imgs = np.concatenate(imgs)
@@ -199,21 +199,28 @@ class Trainer:
         print "compute inception score..."
         score = self.i_score.score(imgs, batch_size=32)
         self.i_score_list.append(score)
-        self._init_log(log_name = "iscore.txt")
-        self._write_log([score], log_name = "iscore.txt")
-        print "score: {}".format(score)
         
-        if max(self.i_score_list) == score:
+        # init log
+        fname_log = os.path.join(self._path_log, "iscore.txt")
+        if not os.path.isfile(fname_log):
+            print "creating iscore log-file..."
+            header = "iscore"
+            with open(fname_log, 'w') as f:
+                f.write(header)
+        
+        # write log
+        with open(fname_log, 'a') as f:
+            f.write("\n" + str(score))
+
+        print "score: {}".format(score)
             
-            print "delete old incept imgs..."
-            shutil.rmtree(self._path_incpt_imgs)
-            
-            print "save new incept imgs..."
-            os.mkdir(self._path_incpt_imgs)
-            for idx in range(len(imgs)):
-                fname = str(idx).zfill(6) + "_" + str(ys[idx]).zfill(3) + ".jpg"
-                fname = os.path.join(self._path_incpt_imgs, fname)
-                scipy.misc.imsave(fname, imgs[idx])
+        print "save new incept imgs..."
+        path = os.path.join(self._path_incpt_imgs, e_str)
+        os.mkdir(path)
+        for idx in range(len(imgs)):
+            fname = str(idx).zfill(6) + "_" + str(ys[idx]).zfill(3) + ".jpg"
+            fname = os.path.join(path, fname)
+            scipy.misc.imsave(fname, imgs[idx])
                 
             
         
@@ -242,7 +249,7 @@ class Trainer:
                         
             for it in tqdm(range(self.iters_per_epoch)):
                 
-                X, Y, Z, i1, i2, i3, z_all = self.sampler.next()
+                X, Y, Z, i1, i2, i3, z_all, _ = self.sampler.next()
                 X, Y, Z = np_to_tensor(X, Y, Z)
                 
                 log_time("train")
@@ -261,7 +268,7 @@ class Trainer:
             
             # save inception score
             if epoch % self._gen_iscore_step == 0:
-                self.get_inception_score()
+                self.get_inception_score(e_str)
             
             # save generated imgs
             if epoch % self._gen_img_step == 0: 
@@ -272,7 +279,7 @@ class Trainer:
                 self.save_tsne_hist(e_str)
 
             # save model
-            if (epoch % self._save_model_step == 0) and (epoch > 1):
+            if epoch % self._save_model_step == 0:
                 self.save_model(e_str)
     
     

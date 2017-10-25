@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import scipy.misc
 
 
 def listdir(path, file_type = None, recrusive=False):
@@ -16,7 +17,7 @@ def listdir(path, file_type = None, recrusive=False):
     else:
         fnames = [os.path.join(path, n) for n in os.listdir(path) if file_type in n]
         
-    return fnames
+    return sorted(fnames)
 
 
 def disp(img_list, title_list = None, fname = None, figsize=None):
@@ -25,6 +26,9 @@ def disp(img_list, title_list = None, fname = None, figsize=None):
     """
     import matplotlib.pylab as plt
 
+    if len(img_list) > 20:
+        img_list = [img_list]
+    
     if figsize is None:
         plt.figure()
     else:
@@ -35,7 +39,9 @@ def disp(img_list, title_list = None, fname = None, figsize=None):
         plt.subplot(1, len(img_list), idx+1)
         if title_list is not None:
             plt.title(title_list[idx])
-            
+        
+        if type(img) == str:
+            img = scipy.misc.imread(img)
         img_show = img.copy()
         
         if len(img_show.shape) == 2:
@@ -61,6 +67,11 @@ def extract(fname):
         
     elif fname.split('.')[-1] == "gz":
         os.system("tar -xzvf " + fname)
+    elif fname.split('.')[-1] == "zip":
+        import zipfile
+        zip_ref = zipfile.ZipFile(fname, 'r')
+        zip_ref.extractall(fname[:-4])
+        zip_ref.close()
     else:
         print "unknown file type"
         sys.exit()
@@ -77,3 +88,16 @@ def mkdir(dir_name):
         d_current = os.path.join(d_current, d)
         if not os.path.isdir(d_current):
             os.mkdir(d_current)
+
+def load_imgs(fnames, resize=None, gray_to_rgb=False):
+    imgs = [scipy.misc.imread(fname) for fname in fnames]
+    if resize is not None:
+        imgs = [scipy.misc.imresize(img, (resize, resize)) for img in imgs]
+    if gray_to_rgb:
+        for img_idx in range(len(imgs)):
+            if imgs[img_idx].ndim == 2:
+                imgs[img_idx] = np.array([imgs[img_idx], 
+                                          imgs[img_idx], 
+                                          imgs[img_idx]]).transpose(1,2,0)
+    return np.array(imgs)
+

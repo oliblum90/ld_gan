@@ -4,3 +4,4 @@ import quick_score
 import inception_score
 import clf
 import missing_mode_nn
+from gen_samples import gen_samples

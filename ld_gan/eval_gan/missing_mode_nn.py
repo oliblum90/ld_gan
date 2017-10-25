@@ -30,24 +30,40 @@ def nn(z_all, z_batch, batch_size = None):
         dists_list = np.array(dists_list)
         idxs_list = np.array(idxs_list)
         
-        idxs = idxs_list[np.argmin(dists_list, axis=0), range(idxs_list.shape[1])]
-    return idxs
+        idxs =  idxs_list[np.argmin(dists_list, axis=0), range(idxs_list.shape[1])]
+        dists = dists_list[np.argmin(dists_list, axis=0), range(idxs_list.shape[1])]
+    return idxs, dists
 
 
-def create_nn_imgs(X, Xt, x, path):
+def create_nn_imgs(X, Xt, x, path=None):
     
     X_flat = X.reshape((X.shape[0], -1))
     Xt_flat = Xt.reshape((Xt.shape[0], -1))
     x_flat = x.reshape((x.shape[0], -1))
     
-    print "compute nearest neighbors..."
-    idxs_real = nn(Xt_flat, X_flat)
-    idxs_fake = nn(Xt_flat, x_flat, batch_size=10000)
+    idxs_real, dists_real = nn(Xt_flat, X_flat)
+    try:
+        idxs_fake, dists_fake = nn(Xt_flat, x_flat, batch_size=10000)
+    except:
+        idxs_fake, dists_fake = nn(Xt_flat, x_flat)
+        
+    if path is not None:
+        fname = os.path.join(path, "idxs_real.txt")
+        np.savetxt(fname, idxs_real)
+        fname = os.path.join(path, "idxs_fake.txt")
+        np.savetxt(fname, idxs_fake)
+        fname = os.path.join(path, "dists_real.txt")
+        np.savetxt(fname, dists_real)
+        fname = os.path.join(path, "dists_fake.txt")
+        np.savetxt(fname, dists_fake)
     
-    print "save imgs..."
-    for idx in tqdm(range(len(Xt))):
+    imgs_list = []
+    for idx in range(len(Xt)):
         i1, i2, i3 = Xt[idx], x[idxs_fake[idx]], X[idxs_real[idx]]
         img = np.concatenate([i1, i2, i3], axis=1)
-        fname = os.path.join(path, str(idx).zfill(3)+".png")
-        scipy.misc.imsave(fname, img)
+        imgs_list.append(img)
+        if path is not None:
+            fname = os.path.join(path, str(idx).zfill(3)+".png")
+            scipy.misc.imsave(fname, img)
+    return imgs_list
 

@@ -20,6 +20,7 @@ class InceptionScore:
                  n_samples=None, 
                  enc=None, 
                  gen=None,
+                 model=None,
                  run_every_nth_epoch=5,
                  real_data_score=None):
         """
@@ -35,12 +36,16 @@ class InceptionScore:
         self.real_data_score = real_data_score
         
         # load model
-        try:
-            self.incept = torchvision.models.inception_v3(pretrained=True)
-        except:
-            name = 'inception_v3_google'
-            model_urls[name] = model_urls[name].replace('https://', 'http://')
-            self.incept = torchvision.models.inception_v3(pretrained=True)
+        if model is None:
+            try:
+                self.incept = torchvision.models.inception_v3(pretrained=True)
+            except:
+                name = 'inception_v3_google'
+                model_urls[name] = model_urls[name].replace('https://', 'http://')
+                self.incept = torchvision.models.inception_v3(pretrained=True)
+        else:
+            self.incept = model
+            
         self.incept.training = False
         self.incept.transform_input = False
         self.incept = self.incept.cuda()

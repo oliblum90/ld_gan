@@ -24,9 +24,9 @@ if __name__ == "__main__":
         torch.cuda.manual_seed_all(RAND_SEED)
 
 
-        import scipy.io
-        X, Y = ld_gan.data_proc.data_loader.load_data(10, resize = 64)
-        Xt, Yt = ld_gan.data_proc.data_loader.load_data(11, resize = 64)
+        path = "data/faceScrub/imgs_top_aligned/"
+        X, Y = ld_gan.data_proc.data_loader.load_data(path, resize=128, test_train="train")
+        Xt, Yt = ld_gan.data_proc.data_loader.load_data(path, resize=128, test_train="test")
         n_classes = Y.shape[1]
         Y = np.argmax(Y, axis = 1)
         Yt = np.argmax(Yt, axis = 1)
@@ -34,6 +34,6 @@ if __name__ == "__main__":
         X = np.array([scipy.misc.imresize(x, (299, 299)) for x in X])
         Xt = np.array([scipy.misc.imresize(x, (299, 299)) for x in Xt])
         
-        ld_gan.eval_gan.clf.train_cnn(X, Y, Xt, Yt, 
-                                      64, 0.001, 1000, 10, 
-                                      "ld_gan/eval_gan/clf_model/")
+        ld_gan.eval_gan.clf.train_cnn(X, Y, Xt, Yt, n_classes,
+                                      64, 0.001, 1000, 25, 
+                                      "eval_imgs/clf_model/scrub_top_aligned_2/")
